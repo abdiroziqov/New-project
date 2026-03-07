@@ -1,0 +1,47 @@
+[
+  {
+    "id": "u-001",
+    "name": "Aisha Karimova",
+    "username": "admin",
+    "password": "admin123",
+    "role": "admin",
+    "email": "aisha.k@factory.local",
+    "status": "active"
+  },
+  {
+    "id": "u-002",
+    "name": "Bekzod Sharipov",
+    "username": "manager",
+    "password": "manager123",
+    "role": "manager",
+    "email": "bekzod.s@factory.local",
+    "status": "active"
+  },
+  {
+    "id": "u-003",
+    "name": "Dilshod Ergashev",
+    "username": "operator1",
+    "password": "operator123",
+    "role": "operator",
+    "email": "dilshod.e@factory.local",
+    "status": "active"
+  },
+  {
+    "id": "u-004",
+    "name": "Madina Rakhimova",
+    "username": "operator2",
+    "password": "operator123",
+    "role": "operator",
+    "email": "madina.r@factory.local",
+    "status": "active"
+  },
+  {
+    "id": "u-005",
+    "name": "Sanjar Yuldashev",
+    "username": "qa_lead",
+    "password": "manager123",
+    "role": "manager",
+    "email": "sanjar.y@factory.local",
+    "status": "inactive"
+  }
+]
