@@ -5,6 +5,7 @@ const exactTranslations: Record<string, string> = {
   'Tez Kiritish': 'Тез Киритиш',
   'Kunlik Hisob': 'Кунлик Ҳисоб',
   'Tosh Kirimi': 'Тош Кирими',
+  "Ta'minotchilar": 'Таъминотчилар',
   Ostatka: 'Остатка',
   Sotuvlar: 'Сотувлар',
   Qarzdorlar: 'Қарздорлар',

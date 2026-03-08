@@ -5,6 +5,7 @@ type IconName =
   | 'manual-entry'
   | 'production'
   | 'raw-materials'
+  | 'suppliers'
   | 'inventory'
   | 'sales'
   | 'debtors'
@@ -99,6 +100,24 @@ defineProps<Props>()
     <path d="M3 16.5 12 4l9 12.5" />
     <path d="M6.5 16.5h11" />
     <path d="M5 20h14" />
+  </svg>
+
+  <svg
+    v-else-if="name === 'suppliers'"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M3 7h11v8H3z" />
+    <path d="M14 10h3l4 3v2h-2" />
+    <circle cx="7.5" cy="18" r="2" />
+    <circle cx="17.5" cy="18" r="2" />
+    <path d="M14 18H9.5" />
+    <path d="M21 15v3" />
   </svg>
 
   <svg
