@@ -36,11 +36,10 @@ Nuxt 3, TypeScript va Tailwind CSS asosidagi kunlik zavod hisob-kitob tizimi.
   - `Howo`
   - `Kamaz`
 
-## Demo login
+## Login
 
-- Admin: `admin` / `admin123`
-- Manager: `manager` / `manager123`
-- Operator: `operator1` / `operator123`
+- login foydalanuvchilari local auth source ichida saqlanadi
+- deploy oldidan credentiallarni alohida tekshirib chiqing
 
 ## Tuzilma
 

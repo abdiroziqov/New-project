@@ -8,18 +8,12 @@ const { t } = useUiLocale()
 const runtimeConfig = useRuntimeConfig()
 
 const form = reactive({
-  username: 'admin',
-  password: 'admin123'
+  username: '',
+  password: ''
 })
 
 const loading = ref(false)
 const errorMessage = ref('')
-
-const demoUsers = [
-  { role: 'Admin', username: 'admin', password: 'admin123' },
-  { role: 'Manager', username: 'manager', password: 'manager123' },
-  { role: 'Operator', username: 'operator1', password: 'operator123' }
-]
 
 const handleSubmit = async () => {
   errorMessage.value = ''
@@ -39,38 +33,22 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-sky-100 via-slate-50 to-amber-100 px-4 py-10">
-    <div class="mx-auto grid max-w-5xl gap-6 lg:grid-cols-2">
-      <section class="panel p-8">
+  <div class="min-h-screen bg-[radial-gradient(circle_at_top,_#e0f2fe,_#f8fafc_45%,_#e2e8f0)] px-4 py-10">
+    <div class="mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl items-center justify-center">
+      <section class="panel w-full max-w-md p-8 shadow-[0_25px_70px_-30px_rgba(15,23,42,0.35)]">
         <p class="text-xs font-semibold uppercase tracking-[0.34em] text-brand-600">{{ t('Korxona') }}</p>
-        <h2 class="mt-2 text-3xl font-black tracking-tight text-slate-900">{{ t(runtimeConfig.public.appName) }}</h2>
-        <p class="mt-1 text-sm text-slate-500">{{ t(runtimeConfig.public.appSubtitle) }}</p>
-        <h1 class="mt-2 text-3xl font-bold text-slate-900">{{ t('Kunlik kirim va sotuv nazorati') }}</h1>
-        <p class="mt-3 text-sm text-slate-600">
-          {{ t('Ming Bir Hazina korxonasi uchun Oybek va Jamshid zavodlarining kunlik tosh kirimi, chiqimi, sotuvi va foydasini boshqaring.') }}
-        </p>
+        <h1 class="mt-3 text-4xl font-black tracking-tight text-slate-900">{{ t(runtimeConfig.public.appName) }}</h1>
+        <p class="mt-2 text-sm text-slate-500">{{ t('Hisob paneliga kirish uchun login ma`lumotlaringizni kiriting.') }}</p>
+        <p class="mt-1 text-xs text-slate-400">{{ t("Faqat ruxsat berilgan foydalanuvchilar uchun.") }}</p>
 
-        <div class="mt-8 space-y-3">
-          <div v-for="entry in demoUsers" :key="entry.role" class="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p class="text-sm font-semibold text-slate-800">{{ t(entry.role) }}</p>
-            <p class="text-xs text-slate-500">
-              {{ entry.username }} / {{ entry.password }}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel p-8">
-        <h2 class="text-xl font-semibold text-slate-900">{{ t('Tizimga kirish') }}</h2>
-        <p class="mt-1 text-sm text-slate-500">{{ t('Davom etish uchun test akkauntlardan birini ishlating.') }}</p>
-
-        <form class="mt-6 space-y-4" @submit.prevent="handleSubmit">
-          <AppInput v-model="form.username" label="Login" placeholder="Login kiriting" required />
+        <form class="mt-8 space-y-4" @submit.prevent="handleSubmit">
+          <AppInput v-model="form.username" label="Login" placeholder="Login kiriting" autocomplete="username" required />
           <AppInput
             v-model="form.password"
             label="Parol"
             type="password"
             placeholder="Parol kiriting"
+            autocomplete="current-password"
             required
           />
 
