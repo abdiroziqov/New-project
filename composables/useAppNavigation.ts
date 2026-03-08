@@ -22,7 +22,7 @@ export interface NavigationItem {
 }
 
 const navigationItems: NavigationItem[] = [
-  { label: 'Dashboard', to: '/', icon: 'dashboard', roles: ['admin', 'manager', 'operator'], group: 'main' },
+  { label: 'Dashboard', to: '/dashboard', icon: 'dashboard', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Kunlik Hisob', to: '/production', icon: 'production', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Tosh Kirimi', to: '/raw-materials', icon: 'raw-materials', roles: ['admin', 'manager', 'operator'], group: 'main' },
   { label: 'Ostatka', to: '/inventory', icon: 'inventory', roles: ['admin', 'manager', 'operator'], group: 'main' },

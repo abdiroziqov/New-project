@@ -3,9 +3,8 @@ definePageMeta({
   layout: false
 })
 
-const { login } = useAuth()
+const { login, isAuthenticated } = useAuth()
 const { t } = useUiLocale()
-const runtimeConfig = useRuntimeConfig()
 
 const form = reactive({
   username: '',
@@ -28,18 +27,29 @@ const handleSubmit = async () => {
   }
 
   loading.value = false
-  await navigateTo('/')
+  await navigateTo('/dashboard')
 }
+
+watch(
+  isAuthenticated,
+  async (value) => {
+    if (value) {
+      await navigateTo('/dashboard')
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
-  <div class="min-h-screen bg-[radial-gradient(circle_at_top,_#e0f2fe,_#f8fafc_45%,_#e2e8f0)] px-4 py-10">
-    <div class="mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl items-center justify-center">
-      <section class="panel w-full max-w-md p-8 shadow-[0_25px_70px_-30px_rgba(15,23,42,0.35)]">
-        <p class="text-xs font-semibold uppercase tracking-[0.34em] text-brand-600">{{ t('Korxona') }}</p>
-        <h1 class="mt-3 text-4xl font-black tracking-tight text-slate-900">{{ t(runtimeConfig.public.appName) }}</h1>
-        <p class="mt-2 text-sm text-slate-500">{{ t('Hisob paneliga kirish uchun login ma`lumotlaringizni kiriting.') }}</p>
-        <p class="mt-1 text-xs text-slate-400">{{ t("Faqat ruxsat berilgan foydalanuvchilar uchun.") }}</p>
+  <div class="min-h-screen bg-[radial-gradient(circle_at_top,_#dbeafe,_#f8fafc_48%,_#e2e8f0)] text-slate-900">
+    <section class="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-8 lg:px-8 lg:py-12">
+      <section class="panel w-full max-w-md rounded-[2rem] p-8 shadow-[0_30px_90px_-35px_rgba(15,23,42,0.45)]">
+        <p class="text-xs font-semibold uppercase tracking-[0.34em] text-brand-600">{{ t('Tizimga kirish') }}</p>
+        <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-950">{{ t('Boshqaruv paneli') }}</h1>
+        <p class="mt-2 text-sm leading-7 text-slate-500">
+          {{ t("Ichki CRM ma'lumotlari tashqi foydalanuvchilarga ko'rinmaydi. Tizimga faqat login orqali kiriladi.") }}
+        </p>
 
         <form class="mt-8 space-y-4" @submit.prevent="handleSubmit">
           <AppInput v-model="form.username" label="Login" placeholder="Login kiriting" autocomplete="username" required />
@@ -60,7 +70,11 @@ const handleSubmit = async () => {
             {{ loading ? t('Kirilmoqda...') : t('Kirish') }}
           </button>
         </form>
+
+        <NuxtLink to="/" class="mt-5 inline-flex text-sm font-semibold text-brand-700 transition hover:text-brand-800">
+          {{ t("Orqaga qaytish") }}
+        </NuxtLink>
       </section>
-    </div>
+    </section>
   </div>
 </template>

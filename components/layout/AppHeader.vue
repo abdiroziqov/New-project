@@ -27,8 +27,8 @@ const today = useState('layout:header-today', () => {
 })
 
 const isActive = (path: string) => {
-  if (path === '/') {
-    return route.path === '/'
+  if (path === '/dashboard') {
+    return route.path === '/dashboard'
   }
 
   return route.path.startsWith(path)
@@ -36,7 +36,7 @@ const isActive = (path: string) => {
 
 const handleLogout = async () => {
   logout()
-  await navigateTo('/login')
+  await navigateTo('/')
 }
 </script>
 
@@ -54,7 +54,7 @@ const handleLogout = async () => {
         <div>
           <h1 class="text-lg font-bold text-slate-900">{{ pageTitle }}</h1>
           <p class="text-xs text-slate-500">
-            <NuxtLink to="/" class="font-semibold text-slate-600 transition hover:text-brand-700">
+            <NuxtLink to="/dashboard" class="font-semibold text-slate-600 transition hover:text-brand-700">
               {{ t(runtimeConfig.public.appName) }}
             </NuxtLink>
             · {{ today }}

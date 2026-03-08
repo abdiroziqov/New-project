@@ -18,8 +18,8 @@ const { mainNavigation, manualNavigation } = useAppNavigation()
 const { t } = useUiLocale()
 
 const isActive = (path: string) => {
-  if (path === '/') {
-    return route.path === '/'
+  if (path === '/dashboard') {
+    return route.path === '/dashboard'
   }
 
   return route.path.startsWith(path)
@@ -40,7 +40,7 @@ const isActive = (path: string) => {
     ]"
   >
     <div class="border-b border-slate-200 px-4 py-4">
-      <NuxtLink to="/" class="block rounded-xl transition hover:bg-slate-50" @click="emit('close')">
+      <NuxtLink to="/dashboard" class="block rounded-xl transition hover:bg-slate-50" @click="emit('close')">
         <p class="text-[10px] font-semibold uppercase tracking-[0.34em] text-brand-600">{{ t('Korxona') }}</p>
         <h2 class="mt-1 text-lg font-black tracking-tight text-slate-900">{{ t(runtimeConfig.public.appName) }}</h2>
         <p class="mt-1 text-xs text-slate-500">{{ t(runtimeConfig.public.appSubtitle) }}</p>

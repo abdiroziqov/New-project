@@ -10,6 +10,6 @@ export default defineNuxtRouteMiddleware((to) => {
   const { user } = useAuth()
 
   if (!user.value || !requiredRoles.includes(user.value.role)) {
-    return navigateTo('/')
+    return navigateTo('/dashboard')
   }
 })
