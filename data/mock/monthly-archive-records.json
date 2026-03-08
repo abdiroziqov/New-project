@@ -1,0 +1,91 @@
+[
+  {
+    "id": "archive-2026-02-combined",
+    "title": "2026-yil fevral oylik hisob",
+    "startDate": "2026-02-01",
+    "endDate": "2026-02-28",
+    "factoryScope": "combined",
+    "producedTons": 857,
+    "shippedTons": 909.5,
+    "stoneLoadSummary": "19 Howo, 8 Kamaz, 1 Howo shibin tosh",
+    "stonePaymentTotal": 21210000,
+    "incomingMoneyTotal": 134088000,
+    "declaredExpenseTotal": 11525000,
+    "declaredProfitTotal": 1000000,
+    "notes": "Ikkala zavod bo'yicha yig'ma fevral hisobi. Daftardagi qisqa sonlar ming som sifatida kiritildi. Qo'shimcha daftardagi yozuvlar: Kridit Cementavoz - 26 mill, Kridit Panel - 17,254 + 2,500, Kridit Kobik - 3,060, Shubin - 4,843, Res - 13,000, Kop - 5,000, Up - 704, Uzim - 7,370 + 8,570, Anokim - 8,600.",
+    "items": [
+      {
+        "label": "Toshga pul",
+        "amount": 21210000,
+        "section": "expense",
+        "note": "19 Howo, 8 Kamaz, 1 Howo shibin tosh"
+      },
+      {
+        "label": "Kelgan pul",
+        "amount": 134088000,
+        "section": "income",
+        "note": "Daftardagi 134,088"
+      },
+      {
+        "label": "Oylik",
+        "amount": 31750000,
+        "section": "expense",
+        "note": "Daftardagi 31,750"
+      },
+      {
+        "label": "Soliq",
+        "amount": 4523000,
+        "section": "expense",
+        "note": "Daftardagi 4,523"
+      },
+      {
+        "label": "Pagruska",
+        "amount": 3989000,
+        "section": "expense",
+        "note": "Daftardagi 3,989"
+      },
+      {
+        "label": "Bozorliq",
+        "amount": 2231000,
+        "section": "expense",
+        "note": "Daftardagi 2,231"
+      },
+      {
+        "label": "Togom",
+        "amount": 1880000,
+        "section": "expense",
+        "note": "Foydalanuvchi tasdiqlagan"
+      },
+      {
+        "label": "Radar",
+        "amount": 206000,
+        "section": "expense",
+        "note": "O'ng tomondagi xarajat"
+      },
+      {
+        "label": "Bochkani tozalash",
+        "amount": 200000,
+        "section": "expense",
+        "note": "O'ng tomondagi xarajat"
+      },
+      {
+        "label": "Atverka",
+        "amount": 98000,
+        "section": "expense",
+        "note": "O'ng tomondagi xarajat"
+      },
+      {
+        "label": "Rasxod",
+        "amount": 11525000,
+        "section": "expense",
+        "note": "Daftardagi umumiy qo'shimcha rasxod"
+      },
+      {
+        "label": "Nasadga",
+        "amount": 1000000,
+        "section": "note",
+        "note": "Daftardagi foyda yoki qoldiq sifatida yozilgan"
+      }
+    ]
+  }
+]

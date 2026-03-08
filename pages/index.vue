@@ -5,7 +5,7 @@ definePageMeta({
   layout: 'dashboard'
 })
 
-const { latestDate, todaySummary, overallSummary, todayFactoryBreakdown, recentSales, recentLoads, recentExpenses } =
+const { latestDate, todaySummary, overallSummary, todayFactoryBreakdown, recentSales, recentLoads, recentExpenses, buildSummary } =
   useFactoryAccounting()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { getSupplierChipClass } = useSupplierHighlight()
@@ -36,6 +36,14 @@ const expenseColumns: TableColumn[] = [
 ]
 
 const latestDateLabel = computed(() => formatDate(latestDate.value))
+const currentMonthStart = computed(() => `${latestDate.value.slice(0, 7)}-01`)
+const currentMonthSummary = computed(() => buildSummary(currentMonthStart.value, latestDate.value))
+const jamshidDailyWorker = computed(
+  () => todaySummary.value.workerPaymentByFactory.find((item) => item.factory === 'Jamshid')?.paidNow ?? 0
+)
+const oybekMonthlyWorker = computed(
+  () => currentMonthSummary.value.workerPaymentByFactory.find((item) => item.factory === 'Oybek')?.accrued ?? 0
+)
 
 const todayFactoryCards = computed(() =>
   todayFactoryBreakdown.value.map((summary, index) => ({
@@ -134,6 +142,18 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
         :value="card.value"
         :subtitle="card.subtitle"
       />
+    </div>
+  </section>
+
+  <section class="space-y-3">
+    <div>
+      <h3 class="text-base font-semibold text-slate-900">Ishchi to'lovi tartibi</h3>
+      <p class="text-sm text-slate-500">Jamshid kunlik beriladi, Oybek esa oy oxirigacha yig'iladi.</p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <StatCard title="Jamshid bugungi ishchi" :value="formatSom(jamshidDailyWorker)" subtitle="har kun beriladi" />
+      <StatCard title="Oybek joriy oy oyligi" :value="formatSom(oybekMonthlyWorker)" subtitle="oy oxiriga yig'iladi" />
     </div>
   </section>
 

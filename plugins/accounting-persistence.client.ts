@@ -3,7 +3,8 @@ import type { AccountingStateSnapshot } from '~/types/accounting'
 
 export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.hook('app:mounted', () => {
-    const { defaultCosts, dailyRecords, incomingLoads, payments, sales, expenses, contacts, reminders } = useFactoryAccounting()
+    const { defaultCosts, dailyRecords, incomingLoads, payments, sales, manualDebts, expenses, contacts, reminders, monthlyArchiveRecords } =
+      useFactoryAccounting()
     const { isAdmin } = useAuth()
     const storagePrefix = 'ming-bir-hazina:'
     let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -15,10 +16,12 @@ export default defineNuxtPlugin((nuxtApp) => {
       dailyRecords: dailyRecords.value,
       incomingLoads: incomingLoads.value,
       sales: sales.value,
+      manualDebts: manualDebts.value,
       payments: payments.value,
       expenses: expenses.value,
       contacts: contacts.value,
       reminders: reminders.value,
+      monthlyArchiveRecords: monthlyArchiveRecords.value,
       updatedAt: new Date().toISOString()
     })
 
@@ -27,10 +30,12 @@ export default defineNuxtPlugin((nuxtApp) => {
       dailyRecords.value = snapshot.dailyRecords
       incomingLoads.value = snapshot.incomingLoads
       sales.value = snapshot.sales
+      manualDebts.value = snapshot.manualDebts
       payments.value = snapshot.payments
       expenses.value = snapshot.expenses
       contacts.value = snapshot.contacts
       reminders.value = snapshot.reminders
+      monthlyArchiveRecords.value = snapshot.monthlyArchiveRecords
       lastSerializedSnapshot = JSON.stringify(buildSnapshot())
     }
 
@@ -39,10 +44,12 @@ export default defineNuxtPlugin((nuxtApp) => {
         snapshot.dailyRecords.length ||
           snapshot.incomingLoads.length ||
           snapshot.sales.length ||
+          snapshot.manualDebts.length ||
           snapshot.payments.length ||
           snapshot.expenses.length ||
           snapshot.contacts.length ||
-          snapshot.reminders.length
+          snapshot.reminders.length ||
+          snapshot.monthlyArchiveRecords.length
       )
 
     const readLocalSnapshot = (): AccountingStateSnapshot | null => {
@@ -52,10 +59,12 @@ export default defineNuxtPlugin((nuxtApp) => {
           dailyRecords: JSON.parse(window.localStorage.getItem(`${storagePrefix}daily-records`) || '[]'),
           incomingLoads: JSON.parse(window.localStorage.getItem(`${storagePrefix}incoming-loads`) || '[]'),
           sales: JSON.parse(window.localStorage.getItem(`${storagePrefix}sales`) || '[]'),
+          manualDebts: JSON.parse(window.localStorage.getItem(`${storagePrefix}manual-debts`) || '[]'),
           payments: JSON.parse(window.localStorage.getItem(`${storagePrefix}payments`) || '[]'),
           expenses: JSON.parse(window.localStorage.getItem(`${storagePrefix}expenses`) || '[]'),
           contacts: JSON.parse(window.localStorage.getItem(`${storagePrefix}contacts`) || '[]'),
           reminders: JSON.parse(window.localStorage.getItem(`${storagePrefix}reminders`) || '[]'),
+          monthlyArchiveRecords: JSON.parse(window.localStorage.getItem(`${storagePrefix}monthly-archive-records`) || '[]'),
           updatedAt: new Date().toISOString()
         } as AccountingStateSnapshot
 
@@ -122,7 +131,11 @@ export default defineNuxtPlugin((nuxtApp) => {
       } finally {
         syncReady = true
 
-        watch([defaultCosts, dailyRecords, incomingLoads, sales, payments, expenses, contacts, reminders], scheduleSave, { deep: true })
+        watch(
+          [defaultCosts, dailyRecords, incomingLoads, sales, manualDebts, payments, expenses, contacts, reminders, monthlyArchiveRecords],
+          scheduleSave,
+          { deep: true }
+        )
       }
     }
 

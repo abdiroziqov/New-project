@@ -20,11 +20,13 @@ const {
   clientDirectory,
   getClientProfile,
   buildSaleReceiptMessage,
-  buildSmsHref
+  buildTelegramLink
 } = useFactoryAccounting()
 const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
+const { downloadWorkbook } = useExcelExport()
+const { printWorkbook } = usePdfExport()
 
 const createFormState = (): Omit<
   SaleRecord,
@@ -62,6 +64,9 @@ const selectedSale = ref<SaleRecord | null>(null)
 const receiptModalOpen = ref(false)
 const receiptSale = ref<SaleRecord | null>(null)
 const copiedReceipt = ref(false)
+const receiptSending = ref(false)
+const receiptError = ref('')
+const receiptSuccess = ref('')
 
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -144,12 +149,73 @@ const activeClientSummary = computed(() => activeClientProfile.value.summary)
 const activeClientContact = computed(() => activeClientProfile.value.contact)
 const activeClientSales = computed(() => activeClientProfile.value.recentSales)
 const activeClientLastSale = computed(() => activeClientProfile.value.lastSale)
+const editingSaleRecord = computed(() => sales.value.find((record) => record.id === editingId.value) ?? null)
 
 const formTotal = computed(() => getSaleTotal(Number(form.tons), Number(form.pricePerTon)))
 const formRemainingAmount = computed(() => getRemainingAmount(formTotal.value, Number(form.paidAmount || 0)))
 const formAdvanceAmount = computed(() => getAdvanceAmount(formTotal.value, Number(form.paidAmount || 0)))
 const formBalanceType = computed(() => getBalanceType(formTotal.value, Number(form.paidAmount || 0)))
 const formBalanceAmount = computed(() => getBalanceAmount(formTotal.value, Number(form.paidAmount || 0)))
+const currentClientNetBalance = computed(() => {
+  if (!activeClientSummary.value) {
+    return 0
+  }
+
+  if (activeClientSummary.value.balanceType === 'bizga_qarz') {
+    return activeClientSummary.value.balanceAmount
+  }
+
+  if (activeClientSummary.value.balanceType === 'bizdan_qarz') {
+    return -activeClientSummary.value.balanceAmount
+  }
+
+  return 0
+})
+const editingSaleNetBalance = computed(() => {
+  if (!editingSaleRecord.value) {
+    return 0
+  }
+
+  if (editingSaleRecord.value.clientName.trim().toLowerCase() !== form.clientName.trim().toLowerCase()) {
+    return 0
+  }
+
+  if (editingSaleRecord.value.balanceType === 'bizga_qarz') {
+    return editingSaleRecord.value.balanceAmount
+  }
+
+  if (editingSaleRecord.value.balanceType === 'bizdan_qarz') {
+    return -editingSaleRecord.value.balanceAmount
+  }
+
+  return 0
+})
+const formNetBalance = computed(() => {
+  if (formBalanceType.value === 'bizga_qarz') {
+    return formBalanceAmount.value
+  }
+
+  if (formBalanceType.value === 'bizdan_qarz') {
+    return -formBalanceAmount.value
+  }
+
+  return 0
+})
+const projectedClientNetBalance = computed(() =>
+  Number((currentClientNetBalance.value - editingSaleNetBalance.value + formNetBalance.value).toFixed(2))
+)
+const projectedClientBalanceType = computed(() => {
+  if (projectedClientNetBalance.value > 0) {
+    return 'bizga_qarz'
+  }
+
+  if (projectedClientNetBalance.value < 0) {
+    return 'bizdan_qarz'
+  }
+
+  return 'yopilgan'
+})
+const projectedClientBalanceAmount = computed(() => Math.abs(projectedClientNetBalance.value))
 
 const tableRows = computed<Record<string, unknown>[]>(() =>
   filteredSales.value.map((record) => ({
@@ -157,6 +223,67 @@ const tableRows = computed<Record<string, unknown>[]>(() =>
     balance: record.balanceAmount
   }))
 )
+
+const buildSalesSheets = () => {
+  return [
+    {
+      name: 'Sotuvlar',
+      columns: [
+        { key: 'date', label: 'Sana' },
+        { key: 'time', label: 'Soat' },
+        { key: 'factory', label: 'Zavod' },
+        { key: 'clientName', label: 'Klient' },
+        { key: 'productName', label: 'Mahsulot' },
+        { key: 'shipmentType', label: 'Yuk turi' },
+        { key: 'tons', label: 'Tonna' },
+        { key: 'pricePerTon', label: 'Narx / kg' },
+        { key: 'totalAmount', label: 'Jami summa' },
+        { key: 'paidAmount', label: "To'langan" },
+        { key: 'paymentMethod', label: "To'lov turi" },
+        { key: 'balanceLabel', label: 'Balans turi' },
+        { key: 'balanceAmount', label: 'Balans' },
+        { key: 'paymentStatus', label: 'Holat' },
+        { key: 'notes', label: 'Izoh' }
+      ],
+      rows: filteredSales.value.map((record) => ({
+        date: formatDate(record.date),
+        time: record.time,
+        factory: record.factory,
+        clientName: record.clientName,
+        productName: record.productName,
+        shipmentType: record.shipmentType,
+        tons: Number(record.tons.toFixed(2)),
+        pricePerTon: Math.round(record.pricePerTon),
+        totalAmount: Math.round(record.totalAmount),
+        paidAmount: Math.round(record.paidAmount),
+        paymentMethod: record.paymentMethod,
+        balanceLabel: balanceLabel(record.balanceType),
+        balanceAmount: Math.round(record.balanceAmount),
+        paymentStatus: record.paymentStatus,
+        notes: record.notes
+      }))
+    },
+    {
+      name: 'Xulosa',
+      rows: [
+        { metric: 'Sotilgan tonna', value: Number(salesSummary.value.totalTons.toFixed(2)) },
+        { metric: 'Tushum', value: Math.round(salesSummary.value.totalRevenue) },
+        { metric: "To'langan", value: Math.round(salesSummary.value.totalPaid) },
+        { metric: 'Bizga qarz', value: Math.round(salesSummary.value.totalDebt) },
+        { metric: 'Bizdan qarz', value: Math.round(salesSummary.value.totalAdvance) },
+        { metric: 'Klient soni', value: salesSummary.value.clientCount }
+      ]
+    }
+  ]
+}
+
+const exportSalesExcel = () => {
+  downloadWorkbook('sotuvlar', buildSalesSheets())
+}
+
+const exportSalesPdf = () => {
+  printWorkbook('Sotuvlar', buildSalesSheets())
+}
 
 const statusClass = (status: unknown) => {
   if (status === 'tolangan') {
@@ -298,6 +425,8 @@ const askDelete = (row: Record<string, unknown>) => {
 const openReceiptModal = (row: Record<string, unknown>) => {
   receiptSale.value = row as SaleRecord
   copiedReceipt.value = false
+  receiptError.value = ''
+  receiptSuccess.value = ''
   receiptModalOpen.value = true
 }
 
@@ -330,8 +459,10 @@ const clearFilters = () => {
 
 const receiptProfile = computed(() => getClientProfile(receiptSale.value?.clientName ?? ''))
 const receiptPhone = computed(() => receiptProfile.value.contact?.phone ?? '')
+const receiptTelegramChatId = computed(() => receiptProfile.value.contact?.telegramChatId ?? '')
+const receiptTelegramUsername = computed(() => receiptProfile.value.contact?.telegramUsername ?? '')
 const receiptMessage = computed(() => (receiptSale.value ? buildSaleReceiptMessage(receiptSale.value) : ''))
-const receiptSmsLink = computed(() => (receiptPhone.value ? buildSmsHref(receiptPhone.value, receiptMessage.value) : ''))
+const receiptTelegramLink = computed(() => buildTelegramLink(receiptTelegramUsername.value))
 
 const copyReceiptMessage = async () => {
   if (!receiptMessage.value || !import.meta.client || !navigator.clipboard) {
@@ -340,6 +471,32 @@ const copyReceiptMessage = async () => {
 
   await navigator.clipboard.writeText(receiptMessage.value)
   copiedReceipt.value = true
+}
+
+const sendReceiptTelegram = async () => {
+  if (!isAdmin.value || !receiptSale.value) {
+    return
+  }
+
+  receiptSending.value = true
+  receiptError.value = ''
+  receiptSuccess.value = ''
+
+  try {
+    await $fetch('/api/notifications/telegram/send', {
+      method: 'POST',
+      body: {
+        clientName: receiptSale.value.clientName,
+        message: receiptMessage.value
+      }
+    })
+
+    receiptSuccess.value = 'Telegram yuborildi.'
+  } catch (error) {
+    receiptError.value = error instanceof Error ? error.message : 'Telegram yuborishda xato.'
+  } finally {
+    receiptSending.value = false
+  }
 }
 
 const applyLastSaleDefaults = () => {
@@ -368,7 +525,10 @@ watch(
       <p class="page-subtitle">Klient tanlanadi, mahsulot turi ko`rsatiladi, balans va to`lov turi avtomatik ko`rinadi.</p>
       <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
     </div>
-    <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Sotuv qo'shish</button>
+    <div class="flex flex-wrap gap-2">
+      <ExportActions @excel="exportSalesExcel" @pdf="exportSalesPdf" />
+      <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Sotuv qo'shish</button>
+    </div>
   </section>
 
   <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -460,7 +620,7 @@ watch(
 
       <template #cell-actions="{ row }">
         <div class="flex justify-end gap-2">
-          <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openReceiptModal(row)">SMS</button>
+          <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openReceiptModal(row)">TG</button>
           <template v-if="isAdmin">
             <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">Tahrirlash</button>
             <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askDelete(row)">O'chirish</button>
@@ -543,6 +703,21 @@ watch(
             <p class="text-xs text-slate-500">Balans</p>
             <p class="mt-1 text-base font-semibold" :class="balanceToneClass(activeClientSummary.balanceType)">
               {{ formatSom(activeClientSummary.balanceAmount) }}
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-4 grid gap-3 md:grid-cols-2">
+          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p class="text-xs text-slate-500">Hozirgi klient balansi</p>
+            <p class="mt-1 text-base font-semibold" :class="balanceToneClass(activeClientSummary.balanceType)">
+              {{ balanceLabel(activeClientSummary.balanceType) }}: {{ formatSom(activeClientSummary.balanceAmount) }}
+            </p>
+          </div>
+          <div class="rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3">
+            <p class="text-xs text-slate-500">Shu yukdan keyingi balans</p>
+            <p class="mt-1 text-base font-semibold" :class="balanceToneClass(projectedClientBalanceType)">
+              {{ balanceLabel(projectedClientBalanceType) }}: {{ formatSom(projectedClientBalanceAmount) }}
             </p>
           </div>
         </div>
@@ -635,9 +810,9 @@ watch(
     @cancel="closeDelete"
   />
 
-  <AppModal :open="receiptModalOpen" title="SMS chek" size="lg" @close="receiptModalOpen = false">
+  <AppModal :open="receiptModalOpen" title="Telegram chek" size="lg" @close="receiptModalOpen = false">
     <div class="space-y-4">
-      <div class="grid gap-3 md:grid-cols-3">
+      <div class="grid gap-3 md:grid-cols-4">
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="text-xs text-slate-500">Klient</p>
           <p class="mt-1 text-sm font-semibold text-slate-900">{{ receiptSale?.clientName || '-' }}</p>
@@ -645,6 +820,10 @@ watch(
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="text-xs text-slate-500">Telefon</p>
           <p class="mt-1 text-sm font-semibold text-slate-900">{{ receiptPhone || '-' }}</p>
+        </div>
+        <div class="rounded-2xl bg-slate-50 px-4 py-3">
+          <p class="text-xs text-slate-500">Telegram chat ID</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ receiptTelegramChatId || '-' }}</p>
         </div>
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="text-xs text-slate-500">Qarz</p>
@@ -656,20 +835,24 @@ watch(
         <pre class="whitespace-pre-wrap font-mono">{{ receiptMessage }}</pre>
       </div>
 
-      <p v-if="copiedReceipt" class="text-sm text-emerald-700">SMS matni copy qilindi.</p>
+      <div class="rounded-2xl bg-slate-50 p-4 text-sm">
+        <p class="text-xs text-slate-500">Telegram username</p>
+        <p class="mt-1 font-semibold text-slate-900">{{ receiptTelegramUsername ? `@${receiptTelegramUsername}` : '-' }}</p>
+      </div>
+
+      <p v-if="copiedReceipt" class="text-sm text-emerald-700">Xabar matni copy qilindi.</p>
+      <p v-if="receiptSuccess" class="text-sm text-emerald-700">{{ receiptSuccess }}</p>
+      <p v-if="receiptError" class="text-sm text-rose-700">{{ receiptError }}</p>
+      <p v-if="!receiptTelegramChatId" class="text-sm text-amber-700">Telegram yuborish uchun klient kartasiga chat ID kiriting.</p>
     </div>
 
     <template #footer>
       <div class="flex flex-wrap justify-end gap-2">
+        <NuxtLink v-if="receiptTelegramLink" :to="receiptTelegramLink" target="_blank" class="btn-secondary">TG profil</NuxtLink>
         <button type="button" class="btn-secondary" @click="copyReceiptMessage">Copy</button>
-        <a
-          v-if="receiptPhone"
-          :href="receiptSmsLink"
-          class="btn-primary"
-          @click="receiptSale ? void 0 : $event.preventDefault()"
-        >
-          SMS ochish
-        </a>
+        <button type="button" class="btn-primary" :disabled="!receiptTelegramChatId || receiptSending || !isAdmin" @click="sendReceiptTelegram">
+          {{ receiptSending ? 'Yuborilmoqda...' : 'Telegram yuborish' }}
+        </button>
       </div>
     </template>
   </AppModal>

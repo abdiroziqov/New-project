@@ -8,6 +8,8 @@ export type ContactType = 'client' | 'supplier'
 export type ExpenseCategory = 'Ishchi' | 'Ovqat' | 'Svet' | 'Bozorlik' | 'Yuklash' | 'Boshqa'
 export type PaymentMethod = 'Naqd' | 'Click' | 'Prichesleniya'
 export type ReminderFrequency = 'daily' | 'every_2_days'
+export type MonthlyArchiveSection = 'income' | 'expense' | 'note'
+export type ArchiveFactoryScope = FactoryName | 'combined'
 
 export interface CostProfile {
   sandPricePerTon: number
@@ -84,11 +86,24 @@ export interface PaymentRecord {
   notes: string
 }
 
+export interface ManualDebtRecord {
+  id: string
+  date: string
+  factory: FactoryName
+  clientName: string
+  amount: number
+  paidAmount: number
+  remainingAmount: number
+  notes: string
+}
+
 export interface ContactRecord {
   id: string
   type: ContactType
   name: string
   phone: string
+  telegramChatId: string
+  telegramUsername: string
   address: string
   notes: string
   createdAt: string
@@ -157,10 +172,36 @@ export interface ClientReminderSetting {
 export interface ClientDirectoryRecord extends ClientSummary {
   id: string
   phone: string
+  telegramChatId: string
+  telegramUsername: string
   address: string
   notes: string
   saleCount: number
   hasSales: boolean
+}
+
+export interface MonthlyArchiveItem {
+  label: string
+  amount: number
+  section: MonthlyArchiveSection
+  note: string
+}
+
+export interface MonthlyArchiveRecord {
+  id: string
+  title: string
+  startDate: string
+  endDate: string
+  factoryScope: ArchiveFactoryScope
+  producedTons: number
+  shippedTons: number
+  stoneLoadSummary: string
+  stonePaymentTotal: number
+  incomingMoneyTotal: number
+  declaredExpenseTotal: number
+  declaredProfitTotal: number
+  notes: string
+  items: MonthlyArchiveItem[]
 }
 
 export interface AccountingStateSnapshot {
@@ -168,9 +209,11 @@ export interface AccountingStateSnapshot {
   dailyRecords: DailyFactoryRecord[]
   incomingLoads: IncomingLoadRecord[]
   sales: SaleRecord[]
+  manualDebts: ManualDebtRecord[]
   payments: PaymentRecord[]
   expenses: OperationalExpense[]
   contacts: ContactRecord[]
   reminders: ClientReminderSetting[]
+  monthlyArchiveRecords: MonthlyArchiveRecord[]
   updatedAt: string
 }

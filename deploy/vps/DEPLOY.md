@@ -26,6 +26,15 @@ cd /opt/ming-bir-hazina
 
 Project fayllarini shu papkaga ko'chiring.
 
+`.env` yarating:
+
+```bash
+cat > .env <<'EOF'
+TELEGRAM_BOT_TOKEN=your_bot_token
+REMINDER_TIMEZONE=Asia/Tashkent
+EOF
+```
+
 ## 3. App ishga tushirish
 
 ```bash

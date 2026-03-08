@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type {
   AccountingStateSnapshot,
+  ArchiveFactoryScope,
   BalanceType,
   ClientReminderSetting,
   ContactRecord,
@@ -12,6 +13,10 @@ import type {
   ExpenseCategory,
   FactoryName,
   IncomingLoadRecord,
+  ManualDebtRecord,
+  MonthlyArchiveItem,
+  MonthlyArchiveRecord,
+  MonthlyArchiveSection,
   OperationalExpense,
   PaymentMethod,
   PaymentRecord,
@@ -26,6 +31,8 @@ import contactsSource from '~/data/mock/contacts.json'
 import dailySource from '~/data/mock/daily-factory-records.json'
 import expensesSource from '~/data/mock/operational-expenses.json'
 import loadsSource from '~/data/mock/incoming-loads.json'
+import manualDebtsSource from '~/data/mock/manual-debts.json'
+import monthlyArchiveSource from '~/data/mock/monthly-archive-records.json'
 import paymentsSource from '~/data/mock/client-payments.json'
 import salesSource from '~/data/mock/customer-sales.json'
 import { normalizeBulkOutputTons, normalizeShipmentTypeForProduct } from '~/composables/useProductRules'
@@ -39,6 +46,8 @@ const shipmentTypes: ShipmentType[] = ['qoplik', 'rasipnoy']
 const expenseCategories: ExpenseCategory[] = ['Ishchi', 'Ovqat', 'Svet', 'Bozorlik', 'Yuklash', 'Boshqa']
 const paymentMethods: PaymentMethod[] = ['Naqd', 'Click', 'Prichesleniya']
 const reminderFrequencies: ReminderFrequency[] = ['daily', 'every_2_days']
+const archiveFactoryScopes: ArchiveFactoryScope[] = ['Oybek', 'Jamshid', 'combined']
+const monthlyArchiveSections: MonthlyArchiveSection[] = ['income', 'expense', 'note']
 
 const defaultCostProfile: CostProfile = {
   sandPricePerTon: 240,
@@ -72,6 +81,10 @@ const isPaymentMethod = (value: unknown): value is PaymentMethod =>
   typeof value === 'string' && paymentMethods.includes(value as PaymentMethod)
 const isReminderFrequency = (value: unknown): value is ReminderFrequency =>
   typeof value === 'string' && reminderFrequencies.includes(value as ReminderFrequency)
+const isArchiveFactoryScope = (value: unknown): value is ArchiveFactoryScope =>
+  typeof value === 'string' && archiveFactoryScopes.includes(value as ArchiveFactoryScope)
+const isMonthlyArchiveSection = (value: unknown): value is MonthlyArchiveSection =>
+  typeof value === 'string' && monthlyArchiveSections.includes(value as MonthlyArchiveSection)
 const asNumber = (value: unknown, fallback = 0) => {
   const normalized = Number(value)
   return Number.isFinite(normalized) ? normalized : fallback
@@ -252,6 +265,23 @@ const normalizePaymentRecord = (record: unknown): PaymentRecord => {
   }
 }
 
+const normalizeManualDebtRecord = (record: unknown): ManualDebtRecord => {
+  const source = typeof record === 'object' && record ? (record as Partial<ManualDebtRecord>) : {}
+  const amount = asNumber(source.amount)
+  const paidAmount = asNumber(source.paidAmount)
+
+  return {
+    id: asString(source.id, createId('debt')),
+    date: asString(source.date, todayIso()),
+    factory: isFactory(source.factory) ? source.factory : 'Oybek',
+    clientName: asString(source.clientName),
+    amount,
+    paidAmount,
+    remainingAmount: getRemainingAmount(amount, paidAmount),
+    notes: asString(source.notes)
+  }
+}
+
 const normalizeContactRecord = (record: unknown): ContactRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<ContactRecord>) : {}
 
@@ -260,6 +290,8 @@ const normalizeContactRecord = (record: unknown): ContactRecord => {
     type: source.type === 'supplier' ? 'supplier' : 'client',
     name: asString(source.name),
     phone: asString(source.phone),
+    telegramChatId: asString(source.telegramChatId),
+    telegramUsername: asString(source.telegramUsername),
     address: asString(source.address),
     notes: asString(source.notes),
     createdAt: asString(source.createdAt, new Date().toISOString())
@@ -281,15 +313,49 @@ const normalizeExpenseRecord = (record: unknown): OperationalExpense => {
   }
 }
 
+const normalizeMonthlyArchiveItem = (record: unknown): MonthlyArchiveItem => {
+  const source = typeof record === 'object' && record ? (record as Partial<MonthlyArchiveItem>) : {}
+
+  return {
+    label: asString(source.label),
+    amount: asNumber(source.amount),
+    section: isMonthlyArchiveSection(source.section) ? source.section : 'note',
+    note: asString(source.note)
+  }
+}
+
+const normalizeMonthlyArchiveRecord = (record: unknown): MonthlyArchiveRecord => {
+  const source = typeof record === 'object' && record ? (record as Partial<MonthlyArchiveRecord>) : {}
+
+  return {
+    id: asString(source.id, createId('archive')),
+    title: asString(source.title, 'Qo`lda kiritilgan arxiv'),
+    startDate: asString(source.startDate, todayIso()),
+    endDate: asString(source.endDate, asString(source.startDate, todayIso())),
+    factoryScope: isArchiveFactoryScope(source.factoryScope) ? source.factoryScope : 'combined',
+    producedTons: asNumber(source.producedTons),
+    shippedTons: asNumber(source.shippedTons),
+    stoneLoadSummary: asString(source.stoneLoadSummary),
+    stonePaymentTotal: asNumber(source.stonePaymentTotal),
+    incomingMoneyTotal: asNumber(source.incomingMoneyTotal),
+    declaredExpenseTotal: asNumber(source.declaredExpenseTotal),
+    declaredProfitTotal: asNumber(source.declaredProfitTotal),
+    notes: asString(source.notes),
+    items: Array.isArray(source.items) ? source.items.map((item) => normalizeMonthlyArchiveItem(item)) : []
+  }
+}
+
 const buildSeedState = (): AccountingStateSnapshot => ({
   defaultCosts: clone(defaultCostProfile),
   dailyRecords: (dailySource as unknown[]).map((record) => normalizeDailyRecord(record, defaultCostProfile)),
   incomingLoads: (loadsSource as unknown[]).map((record) => normalizeIncomingLoad(record)),
   sales: (salesSource as unknown[]).map((record) => normalizeSaleRecord(record)),
+  manualDebts: (manualDebtsSource as unknown[]).map((record) => normalizeManualDebtRecord(record)),
   payments: (paymentsSource as unknown[]).map((record) => normalizePaymentRecord(record)),
   expenses: (expensesSource as unknown[]).map((record) => normalizeExpenseRecord(record)),
   contacts: (contactsSource as unknown[]).map((record) => normalizeContactRecord(record)),
   reminders: [],
+  monthlyArchiveRecords: (monthlyArchiveSource as unknown[]).map((record) => normalizeMonthlyArchiveRecord(record)),
   updatedAt: new Date().toISOString()
 })
 
@@ -306,10 +372,14 @@ export const normalizeAccountingState = (snapshot: unknown): AccountingStateSnap
       ? source.incomingLoads.map((record) => normalizeIncomingLoad(record))
       : [],
     sales: Array.isArray(source.sales) ? source.sales.map((record) => normalizeSaleRecord(record)) : [],
+    manualDebts: Array.isArray(source.manualDebts) ? source.manualDebts.map((record) => normalizeManualDebtRecord(record)) : [],
     payments: Array.isArray(source.payments) ? source.payments.map((record) => normalizePaymentRecord(record)) : [],
     expenses: Array.isArray(source.expenses) ? source.expenses.map((record) => normalizeExpenseRecord(record)) : [],
     contacts: Array.isArray(source.contacts) ? source.contacts.map((record) => normalizeContactRecord(record)) : [],
     reminders: Array.isArray(source.reminders) ? source.reminders.map((record) => normalizeReminderRecord(record)) : [],
+    monthlyArchiveRecords: Array.isArray(source.monthlyArchiveRecords)
+      ? source.monthlyArchiveRecords.map((record) => normalizeMonthlyArchiveRecord(record))
+      : (monthlyArchiveSource as unknown[]).map((record) => normalizeMonthlyArchiveRecord(record)),
     updatedAt: asString(source.updatedAt, new Date().toISOString())
   }
 }

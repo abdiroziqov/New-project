@@ -65,6 +65,25 @@ yarn build
 yarn preview
 ```
 
+## Telegram eslatmalar
+
+Qarzdor klientlarga Telegram bot orqali eslatma yuborish uchun:
+
+- `TELEGRAM_BOT_TOKEN` - bot token
+- `REMINDER_TIMEZONE` - ixtiyoriy, default: `Asia/Tashkent`
+
+Misol:
+
+```bash
+TELEGRAM_BOT_TOKEN=123456:ABCDEF
+REMINDER_TIMEZONE=Asia/Tashkent
+```
+
+Muhim:
+- klient kartasiga `Telegram chat ID` kiritilishi kerak
+- klient botga kamida 1 marta yozgan bo'lishi kerak
+- VPS doimiy ishlayotgan bo'lsa, eslatmalar vaqtiga qarab o'zi yuboriladi
+
 ## Deploy
 
 Bu loyiha endi `SQLite` bilan server tomonda saqlaydi. Shuning uchun deploy qilganda `persistent volume` kerak bo'ladi.

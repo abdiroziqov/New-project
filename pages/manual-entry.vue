@@ -1,11 +1,27 @@
 <script setup lang="ts">
-import type { ExpenseCategory, OperationalExpense, PaymentMethod, SaleRecord } from '~/types/accounting'
+import type { ExpenseCategory, FactoryName, ManualDebtRecord, OperationalExpense, PaymentMethod, SaleRecord } from '~/types/accounting'
 
 definePageMeta({
   layout: 'dashboard',
   middleware: 'role',
   roles: ['admin']
 })
+
+type OutstandingEntry = {
+  id: string
+  entryType: 'sale' | 'manualDebt'
+  date: string
+  factory: FactoryName
+  clientName: string
+  tons: number
+  totalAmount: number
+  paidAmount: number
+  remainingAmount: number
+  notes: string
+  label: string
+  saleRef: SaleRecord | null
+  debtRef: ManualDebtRecord | null
+}
 
 const {
   latestDate,
@@ -14,9 +30,11 @@ const {
   expenseCategories,
   clientOptions,
   sales,
+  manualDebts,
   overallSummary,
   addPayment,
   updateSale,
+  updateManualDebt,
   addExpense,
   getClientProfile
 } = useFactoryAccounting()
@@ -53,26 +71,55 @@ const showMessage = (message: string) => {
   }, 2500)
 }
 
-const clientOutstandingSales = computed(() =>
-  sales.value
-    .filter(
-      (sale) =>
-        sale.remainingAmount > 0 &&
-        (!clientPaymentForm.clientName || sale.clientName === clientPaymentForm.clientName)
-    )
-    .slice()
-    .sort((left, right) => right.date.localeCompare(left.date))
-)
+const clientOutstandingEntries = computed<OutstandingEntry[]>(() => {
+  const saleEntries = sales.value
+    .filter((sale) => sale.remainingAmount > 0 && (!clientPaymentForm.clientName || sale.clientName === clientPaymentForm.clientName))
+    .map<OutstandingEntry>((sale) => ({
+      id: sale.id,
+      entryType: 'sale',
+      date: sale.date,
+      factory: sale.factory,
+      clientName: sale.clientName,
+      tons: sale.tons,
+      totalAmount: sale.totalAmount,
+      paidAmount: sale.paidAmount,
+      remainingAmount: sale.remainingAmount,
+      notes: sale.notes,
+      label: 'Sotuv',
+      saleRef: sale,
+      debtRef: null
+    }))
+
+  const debtEntries = manualDebts.value
+    .filter((record) => record.remainingAmount > 0 && (!clientPaymentForm.clientName || record.clientName === clientPaymentForm.clientName))
+    .map<OutstandingEntry>((record) => ({
+      id: record.id,
+      entryType: 'manualDebt',
+      date: record.date,
+      factory: record.factory,
+      clientName: record.clientName,
+      tons: 0,
+      totalAmount: record.amount,
+      paidAmount: record.paidAmount,
+      remainingAmount: record.remainingAmount,
+      notes: record.notes,
+      label: 'Eski qarz',
+      saleRef: null,
+      debtRef: record
+    }))
+
+  return [...saleEntries, ...debtEntries].sort((left, right) => right.date.localeCompare(left.date))
+})
 
 const clientOutstandingSaleOptions = computed(() =>
-  clientOutstandingSales.value.map((sale) => ({
-    label: `${sale.clientName} · ${formatDate(sale.date)} · ${formatSom(sale.remainingAmount)}`,
-    value: sale.id
+  clientOutstandingEntries.value.map((entry) => ({
+    label: `${entry.clientName} · ${entry.label} · ${formatDate(entry.date)} · ${formatSom(entry.remainingAmount)}`,
+    value: entry.id
   }))
 )
 
-const selectedClientSale = computed(() =>
-  clientOutstandingSales.value.find((sale) => sale.id === clientPaymentForm.saleId) ?? null
+const selectedClientEntry = computed(() =>
+  clientOutstandingEntries.value.find((entry) => entry.id === clientPaymentForm.saleId) ?? null
 )
 
 const activeClientProfile = computed(() => getClientProfile(clientPaymentForm.clientName))
@@ -114,41 +161,50 @@ const saveClientPayment = () => {
     return
   }
 
-  if (!selectedClientSale.value) {
+  if (!selectedClientEntry.value) {
     clientPaymentError.value = 'Tanlangan qarz yozuvi topilmadi.'
     return
   }
 
   const amount = Number(clientPaymentForm.amount)
 
-  if (amount <= 0 || amount > selectedClientSale.value.remainingAmount) {
+  if (amount <= 0 || amount > selectedClientEntry.value.remainingAmount) {
     clientPaymentError.value = 'Summa tanlangan qarzdan oshmasligi kerak.'
     return
   }
 
-  updateSale({
-    id: selectedClientSale.value.id,
-    date: selectedClientSale.value.date,
-    time: selectedClientSale.value.time,
-    factory: selectedClientSale.value.factory,
-    clientName: selectedClientSale.value.clientName,
-    productName: selectedClientSale.value.productName,
-    shipmentType: selectedClientSale.value.shipmentType,
-    tons: selectedClientSale.value.tons,
-    pricePerTon: selectedClientSale.value.pricePerTon,
-    paidAmount: selectedClientSale.value.paidAmount + amount,
-    paymentMethod: selectedClientSale.value.paymentMethod,
-    notes: selectedClientSale.value.notes
-  })
+  if (selectedClientEntry.value.entryType === 'sale' && selectedClientEntry.value.saleRef) {
+    updateSale({
+      id: selectedClientEntry.value.saleRef.id,
+      date: selectedClientEntry.value.saleRef.date,
+      time: selectedClientEntry.value.saleRef.time,
+      factory: selectedClientEntry.value.saleRef.factory,
+      clientName: selectedClientEntry.value.saleRef.clientName,
+      productName: selectedClientEntry.value.saleRef.productName,
+      shipmentType: selectedClientEntry.value.saleRef.shipmentType,
+      tons: selectedClientEntry.value.saleRef.tons,
+      pricePerTon: selectedClientEntry.value.saleRef.pricePerTon,
+      paidAmount: selectedClientEntry.value.saleRef.paidAmount + amount,
+      paymentMethod: selectedClientEntry.value.saleRef.paymentMethod,
+      notes: selectedClientEntry.value.saleRef.notes
+    })
+  }
+
+  if (selectedClientEntry.value.entryType === 'manualDebt' && selectedClientEntry.value.debtRef) {
+    updateManualDebt({
+      ...selectedClientEntry.value.debtRef,
+      paidAmount: selectedClientEntry.value.debtRef.paidAmount + amount
+    })
+  }
 
   addPayment({
     date: clientPaymentForm.date,
-    factory: selectedClientSale.value.factory,
-    clientName: selectedClientSale.value.clientName,
+    factory: selectedClientEntry.value.factory,
+    clientName: selectedClientEntry.value.clientName,
     amount,
     paymentMethod: clientPaymentForm.paymentMethod,
-    saleId: selectedClientSale.value.id,
-    saleDate: selectedClientSale.value.date,
+    saleId: selectedClientEntry.value.id,
+    saleDate: selectedClientEntry.value.date,
     notes: clientPaymentForm.notes.trim()
   })
 
@@ -186,7 +242,7 @@ const saveExpense = () => {
 watch(
   () => clientPaymentForm.clientName,
   () => {
-    clientPaymentForm.saleId = clientOutstandingSales.value[0]?.id ?? ''
+    clientPaymentForm.saleId = clientOutstandingEntries.value[0]?.id ?? ''
   }
 )
 </script>
@@ -198,7 +254,7 @@ watch(
       <p class="page-subtitle">Klientdan tushgan pul va qo'lda chiqim shu yerda yuritiladi. Bu bo'lim faqat admin uchun.</p>
     </div>
 
-    <NuxtLink to="/raw-materials" class="btn-secondary">Ta'minotchi to'lovi: Tosh Kirimi</NuxtLink>
+    <NuxtLink to="/debtors" class="btn-secondary">Eski qarz qo'shish: Qarzdorlar</NuxtLink>
   </section>
 
   <p v-if="infoMessage" class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
@@ -225,7 +281,7 @@ watch(
     <article class="panel p-5">
       <header class="mb-4">
         <h3 class="text-base font-semibold text-slate-900">Klientdan pul tushdi</h3>
-        <p class="text-sm text-slate-500">Qaysi qarz yozuvi yopilayotganini tanlang. Shunda balans avtomatik kamayadi.</p>
+        <p class="text-sm text-slate-500">Qaysi qarz yozuvi yopilayotganini tanlang. Sotuv ham, eski qarz ham shu yerdan yopiladi.</p>
       </header>
 
       <div class="grid gap-4 md:grid-cols-2">
@@ -235,7 +291,7 @@ watch(
           v-model="clientPaymentForm.saleId"
           label="Qarz yozuvi"
           :options="clientOutstandingSaleOptions"
-          placeholder="Yuk yozuvini tanlang"
+          placeholder="Qarz yozuvini tanlang"
         />
         <AppSelect
           v-model="clientPaymentForm.paymentMethod"
@@ -246,22 +302,35 @@ watch(
         <AppInput v-model="clientPaymentForm.notes" label="Izoh" placeholder="Masalan, qisman to'lov" />
       </div>
 
-      <div v-if="selectedClientSale" class="mt-4 grid gap-3 md:grid-cols-4">
+      <div v-if="selectedClientEntry" class="mt-4 grid gap-3 md:grid-cols-4">
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="text-xs text-slate-500">Klient</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ selectedClientSale.clientName }}</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ selectedClientEntry.clientName }}</p>
         </div>
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Yuk sanasi</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatDate(selectedClientSale.date) }}</p>
+          <p class="text-xs text-slate-500">Yozuv turi</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ selectedClientEntry.label }}</p>
+        </div>
+        <div class="rounded-2xl bg-slate-50 px-4 py-3">
+          <p class="text-xs text-slate-500">Asl sana</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatDate(selectedClientEntry.date) }}</p>
         </div>
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="text-xs text-slate-500">Qarz</p>
-          <p class="mt-1 text-sm font-semibold text-rose-700">{{ formatSom(selectedClientSale.remainingAmount) }}</p>
+          <p class="mt-1 text-sm font-semibold text-rose-700">{{ formatSom(selectedClientEntry.remainingAmount) }}</p>
+        </div>
+      </div>
+
+      <div v-if="selectedClientEntry" class="mt-3 grid gap-3 md:grid-cols-2">
+        <div class="rounded-2xl bg-slate-50 px-4 py-3">
+          <p class="text-xs text-slate-500">Tonna</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">
+            {{ selectedClientEntry.entryType === 'sale' ? formatTons(selectedClientEntry.tons) : '-' }}
+          </p>
         </div>
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Yuk</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatTons(selectedClientSale.tons) }}</p>
+          <p class="text-xs text-slate-500">Jami yozuv</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatSom(selectedClientEntry.totalAmount) }}</p>
         </div>
       </div>
 

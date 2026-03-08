@@ -30,6 +30,8 @@ const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
 const { getSupplierChipClass, getSupplierInputClass } = useSupplierHighlight()
+const { downloadWorkbook } = useExcelExport()
+const { printWorkbook } = usePdfExport()
 
 const createFormState = (): IncomingLoadFormState => ({
   date: latestDate.value,
@@ -178,6 +180,119 @@ const supplierLoadRows = computed<Record<string, unknown>[]>(() =>
     }
   })
 )
+
+const buildFilteredLoadSheets = () => {
+  return [
+    {
+      name: 'Tosh kirimi',
+      columns: [
+        { key: 'date', label: 'Sana' },
+        { key: 'factory', label: 'Zavod' },
+        { key: 'vehicleType', label: 'Mashina' },
+        { key: 'supplier', label: "Ta'minotchi" },
+        { key: 'tons', label: 'Tonna' },
+        { key: 'pricePerTon', label: 'Narx / tonna' },
+        { key: 'totalAmount', label: 'Jami narx' },
+        { key: 'paidAmount', label: "To'langan" },
+        { key: 'remainingDebt', label: 'Biz qarzmiz' },
+        { key: 'advanceAmount', label: 'U qarz' },
+        { key: 'balanceLabel', label: 'Holat' },
+        { key: 'notes', label: 'Izoh' }
+      ],
+      rows: filteredLoads.value.map((record) => {
+        const advanceAmount = getLoadAdvanceAmount(record.totalAmount, record.paidAmount)
+        const balanceType: BalanceType = advanceAmount > 0 ? 'bizga_qarz' : record.remainingAmount > 0 ? 'bizdan_qarz' : 'yopilgan'
+
+        return {
+          date: formatDate(record.date),
+          factory: record.factory,
+          vehicleType: record.vehicleType,
+          supplier: record.supplier,
+          tons: Number(record.tons.toFixed(2)),
+          pricePerTon: Math.round(record.pricePerTon),
+          totalAmount: Math.round(record.totalAmount),
+          paidAmount: Math.round(record.paidAmount),
+          remainingDebt: Math.round(record.remainingAmount),
+          advanceAmount: Math.round(advanceAmount),
+          balanceLabel: balanceLabel(balanceType),
+          notes: record.notes
+        }
+      })
+    },
+    {
+      name: 'Xulosa',
+      rows: [
+        { metric: 'Jami tonna', value: Number(loadSummary.value.totalTons.toFixed(2)) },
+        { metric: 'Jami summa', value: Math.round(loadSummary.value.totalAmount) },
+        { metric: "To'langan", value: Math.round(loadSummary.value.totalPaid) },
+        { metric: 'Biz qarzmiz', value: Math.round(loadSummary.value.totalDebt) },
+        { metric: 'U qarz', value: Math.round(loadSummary.value.totalAdvance) }
+      ]
+    }
+  ]
+}
+
+const exportFilteredLoadsExcel = () => {
+  downloadWorkbook('tosh-kirimi', buildFilteredLoadSheets())
+}
+
+const exportFilteredLoadsPdf = () => {
+  printWorkbook('Tosh kirimi', buildFilteredLoadSheets())
+}
+
+const buildSupplierSheets = () => {
+  if (!supplierSummary.value) {
+    return []
+  }
+
+  return [
+    {
+      name: 'Xulosa',
+      rows: [
+        { metric: "Ta'minotchi", value: supplierSummary.value.supplierName },
+        { metric: 'Jami tosh', value: Number(supplierSummary.value.totalTons.toFixed(2)) },
+        { metric: "O'rtacha narx / tonna", value: Math.round(supplierSummary.value.averagePricePerTon) },
+        { metric: 'Jami summa', value: Math.round(supplierSummary.value.totalAmount) },
+        { metric: "Jami to'langan", value: Math.round(supplierSummary.value.totalPaid) },
+        { metric: 'Biz qarzmiz', value: Math.round(supplierSummary.value.totalDebt) },
+        { metric: 'U qarz', value: Math.round(supplierSummary.value.totalAdvance) },
+        { metric: 'Balans turi', value: balanceLabel(supplierSummary.value.balanceType) },
+        { metric: 'Balans summa', value: Math.round(supplierSummary.value.balanceAmount) },
+        { metric: 'Telefon', value: supplierContact.value?.phone ?? '' },
+        { metric: 'Manzil', value: supplierContact.value?.address ?? '' }
+      ]
+    },
+    {
+      name: 'Yuklar',
+      columns: supplierLoadColumns,
+      rows: supplierProfile.value.recentLoads.map((record) => {
+        const advanceAmount = getLoadAdvanceAmount(record.totalAmount, record.paidAmount)
+        const balanceType: BalanceType = advanceAmount > 0 ? 'bizga_qarz' : record.remainingAmount > 0 ? 'bizdan_qarz' : 'yopilgan'
+
+        return {
+          date: formatDate(record.date),
+          factory: record.factory,
+          vehicleType: record.vehicleType,
+          tons: Number(record.tons.toFixed(2)),
+          pricePerTon: Math.round(record.pricePerTon),
+          totalAmount: Math.round(record.totalAmount),
+          paidAmount: Math.round(record.paidAmount),
+          balance: Math.round(advanceAmount > 0 ? advanceAmount : record.remainingAmount),
+          notes: record.notes,
+          balanceLabel: balanceLabel(balanceType)
+        }
+      })
+    }
+  ]
+}
+
+const exportSupplierLoadsExcel = () => {
+  downloadWorkbook(`${selectedSupplierName.value || 'supplier'}-tosh-hisobi`, buildSupplierSheets())
+}
+
+const exportSupplierLoadsPdf = () => {
+  printWorkbook(`${selectedSupplierName.value || "Ta'minotchi"} tosh hisobi`, buildSupplierSheets())
+}
 
 const balanceToneClass = (balanceType: unknown) => {
   if (balanceType === 'bizdan_qarz') {
@@ -345,7 +460,10 @@ const clearFilters = () => {
       <p class="page-subtitle">Howo yoki Kamazda kelgan tosh uchun jami kelish narxini kiriting. Narx / tonna avtomatik hisoblanadi.</p>
       <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
     </div>
-    <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Kirim qo'shish</button>
+    <div class="flex flex-wrap gap-2">
+      <ExportActions @excel="exportFilteredLoadsExcel" @pdf="exportFilteredLoadsPdf" />
+      <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Kirim qo'shish</button>
+    </div>
   </section>
 
   <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -502,6 +620,10 @@ const clearFilters = () => {
 
   <AppModal :open="supplierModalOpen" :title="selectedSupplierName || 'Ta`minotchi profili'" size="xl" @close="supplierModalOpen = false">
     <div v-if="supplierSummary" class="space-y-4">
+      <div class="flex justify-end">
+        <ExportActions label="Supplier yuklab olish" @excel="exportSupplierLoadsExcel" @pdf="exportSupplierLoadsPdf" />
+      </div>
+
       <div class="grid gap-4 md:grid-cols-4">
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
           <p class="text-xs text-slate-500">Jami tosh</p>

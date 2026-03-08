@@ -2,9 +2,12 @@ import contactsSource from '~/data/mock/contacts.json'
 import dailySource from '~/data/mock/daily-factory-records.json'
 import expensesSource from '~/data/mock/operational-expenses.json'
 import loadsSource from '~/data/mock/incoming-loads.json'
+import manualDebtsSource from '~/data/mock/manual-debts.json'
+import monthlyArchiveSource from '~/data/mock/monthly-archive-records.json'
 import paymentsSource from '~/data/mock/client-payments.json'
 import salesSource from '~/data/mock/customer-sales.json'
 import type {
+  ArchiveFactoryScope,
   ClientReminderSetting,
   ClientDirectoryRecord,
   ClientSummary,
@@ -15,6 +18,10 @@ import type {
   ExpenseCategory,
   FactoryName,
   IncomingLoadRecord,
+  ManualDebtRecord,
+  MonthlyArchiveItem,
+  MonthlyArchiveRecord,
+  MonthlyArchiveSection,
   OperationalExpense,
   PaymentRecord,
   PaymentMethod,
@@ -56,17 +63,25 @@ const formatSomValue = (value: number) => `${new Intl.NumberFormat('uz-UZ').form
 const seedContacts = contactsSource as ContactRecord[]
 const seedDailyRecords = dailySource as DailyFactoryRecord[]
 const seedIncomingLoads = loadsSource as IncomingLoadRecord[]
+const seedManualDebts = manualDebtsSource as ManualDebtRecord[]
 const seedPayments = paymentsSource as PaymentRecord[]
 const seedSales = salesSource as SaleRecord[]
 const seedExpenses = expensesSource as OperationalExpense[]
+const seedMonthlyArchiveRecords = monthlyArchiveSource as MonthlyArchiveRecord[]
 
 export const factories: FactoryName[] = ['Oybek', 'Jamshid']
+const workerPayoutModeByFactory: Record<FactoryName, 'daily' | 'monthly'> = {
+  Oybek: 'monthly',
+  Jamshid: 'daily'
+}
 export const productTypes: ProductType[] = ['Qum', 'Mel']
 export const vehicleTypes: VehicleType[] = ['Howo', 'Kamaz']
 export const shipmentTypes: ShipmentType[] = ['qoplik', 'rasipnoy']
 export const expenseCategories: ExpenseCategory[] = ['Ishchi', 'Ovqat', 'Svet', 'Bozorlik', 'Yuklash', 'Boshqa']
 export const paymentMethods: PaymentMethod[] = ['Naqd', 'Click', 'Prichesleniya']
 export const reminderFrequencies: ReminderFrequency[] = ['daily', 'every_2_days']
+export const archiveFactoryScopes: ArchiveFactoryScope[] = ['Oybek', 'Jamshid', 'combined']
+export const monthlyArchiveSections: MonthlyArchiveSection[] = ['income', 'expense', 'note']
 
 export const defaultCostProfile: CostProfile = {
   sandPricePerTon: 240,
@@ -339,6 +354,8 @@ const normalizeContactRecord = (record: Partial<ContactRecord>): ContactRecord =
   type: record.type ?? 'client',
   name: record.name?.trim() ?? '',
   phone: record.phone?.trim() ?? '',
+  telegramChatId: record.telegramChatId?.trim() ?? '',
+  telegramUsername: record.telegramUsername?.trim().replace(/^@/, '') ?? '',
   address: record.address?.trim() ?? '',
   notes: record.notes?.trim() ?? '',
   createdAt: record.createdAt ?? new Date().toISOString()
@@ -352,6 +369,48 @@ const normalizeReminderRecord = (record: Partial<ClientReminderSetting>): Client
   time: normalizeTime(record.time) || '08:00',
   notes: record.notes?.trim() ?? '',
   lastSentAt: record.lastSentAt ?? ''
+})
+
+const normalizeManualDebtRecord = (record: Partial<ManualDebtRecord>): ManualDebtRecord => {
+  const amount = Number(record.amount ?? 0)
+  const paidAmount = Number(record.paidAmount ?? 0)
+
+  return {
+    id: record.id ?? createId('debt'),
+    date: record.date ?? new Date().toISOString().slice(0, 10),
+    factory: record.factory ?? 'Oybek',
+    clientName: record.clientName?.trim() ?? '',
+    amount,
+    paidAmount,
+    remainingAmount: getRemainingAmount(amount, paidAmount),
+    notes: record.notes?.trim() ?? ''
+  }
+}
+
+const normalizeMonthlyArchiveItem = (record: Partial<MonthlyArchiveItem>): MonthlyArchiveItem => ({
+  label: record.label?.trim() ?? '',
+  amount: Number(record.amount ?? 0),
+  section: monthlyArchiveSections.includes(record.section as MonthlyArchiveSection) ? (record.section as MonthlyArchiveSection) : 'note',
+  note: record.note?.trim() ?? ''
+})
+
+const normalizeMonthlyArchiveRecord = (record: Partial<MonthlyArchiveRecord>): MonthlyArchiveRecord => ({
+  id: record.id ?? createId('archive'),
+  title: record.title?.trim() || 'Qo`lda kiritilgan arxiv',
+  startDate: record.startDate ?? new Date().toISOString().slice(0, 10),
+  endDate: record.endDate ?? record.startDate ?? new Date().toISOString().slice(0, 10),
+  factoryScope: archiveFactoryScopes.includes(record.factoryScope as ArchiveFactoryScope)
+    ? (record.factoryScope as ArchiveFactoryScope)
+    : 'combined',
+  producedTons: Number(record.producedTons ?? 0),
+  shippedTons: Number(record.shippedTons ?? 0),
+  stoneLoadSummary: record.stoneLoadSummary?.trim() ?? '',
+  stonePaymentTotal: Number(record.stonePaymentTotal ?? 0),
+  incomingMoneyTotal: Number(record.incomingMoneyTotal ?? 0),
+  declaredExpenseTotal: Number(record.declaredExpenseTotal ?? 0),
+  declaredProfitTotal: Number(record.declaredProfitTotal ?? 0),
+  notes: record.notes?.trim() ?? '',
+  items: Array.isArray(record.items) ? record.items.map((item) => normalizeMonthlyArchiveItem(item)) : []
 })
 
 const buildCostBreakdown = (profile: CostProfile) => {
@@ -386,6 +445,10 @@ export const useFactoryAccounting = () => {
     'accounting:sales',
     () => seedSales.map((record) => normalizeSaleRecord(record))
   )
+  const manualDebts = useState<ManualDebtRecord[]>(
+    'accounting:manual-debts',
+    () => clone(seedManualDebts).map((record) => normalizeManualDebtRecord(record))
+  )
   const payments = useState<PaymentRecord[]>(
     'accounting:payments',
     () =>
@@ -402,11 +465,16 @@ export const useFactoryAccounting = () => {
     'accounting:reminders',
     () => []
   )
+  const monthlyArchiveRecords = useState<MonthlyArchiveRecord[]>(
+    'accounting:monthly-archive-records',
+    () => clone(seedMonthlyArchiveRecords).map((record) => normalizeMonthlyArchiveRecord(record))
+  )
 
   const latestDate = computed(() => {
     const dates = [
       ...dailyRecords.value.map((record) => record.date),
       ...incomingLoads.value.map((record) => record.date),
+      ...manualDebts.value.map((record) => record.date),
       ...payments.value.map((record) => record.date),
       ...sales.value.map((record) => record.date),
       ...expenses.value.map((record) => record.date)
@@ -440,7 +508,8 @@ export const useFactoryAccounting = () => {
     const summaryMap = new Map<string, ClientSummary>()
     const clientNames = new Set([
       ...clientContacts.value.map((contact) => contact.name),
-      ...sales.value.map((sale) => sale.clientName)
+      ...sales.value.map((sale) => sale.clientName),
+      ...manualDebts.value.map((record) => record.clientName)
     ])
 
     Array.from(clientNames).forEach((clientName) => {
@@ -502,6 +571,44 @@ export const useFactoryAccounting = () => {
       summaryMap.set(sale.clientName, current)
     })
 
+    manualDebts.value.forEach((debt) => {
+      const current = summaryMap.get(debt.clientName) ?? {
+        clientName: debt.clientName,
+        totalTons: 0,
+        totalRevenue: 0,
+        averagePricePerTon: 0,
+        totalDebt: 0,
+        totalAdvance: 0,
+        balanceType: 'yopilgan' as const,
+        balanceAmount: 0,
+        lastPurchaseDate: debt.date,
+        lastFactory: debt.factory
+      }
+
+      current.totalRevenue += debt.amount
+      current.totalDebt += debt.remainingAmount
+
+      if (!current.lastPurchaseDate || debt.date >= current.lastPurchaseDate) {
+        current.lastPurchaseDate = debt.date
+        current.lastFactory = debt.factory
+      }
+
+      const netBalance = Number((current.totalDebt - current.totalAdvance).toFixed(2))
+
+      if (netBalance > 0) {
+        current.balanceType = 'bizga_qarz'
+        current.balanceAmount = netBalance
+      } else if (netBalance < 0) {
+        current.balanceType = 'bizdan_qarz'
+        current.balanceAmount = Math.abs(netBalance)
+      } else {
+        current.balanceType = 'yopilgan'
+        current.balanceAmount = 0
+      }
+
+      summaryMap.set(debt.clientName, current)
+    })
+
     return Array.from(summaryMap.values()).sort((left, right) => {
       if (right.totalRevenue !== left.totalRevenue) {
         return right.totalRevenue - left.totalRevenue
@@ -542,6 +649,33 @@ export const useFactoryAccounting = () => {
         summaryMap.set(sale.clientName, current)
       })
 
+    manualDebts.value
+      .filter((debt) => debt.remainingAmount > 0)
+      .forEach((debt) => {
+        const current = summaryMap.get(debt.clientName) ?? {
+          clientName: debt.clientName,
+          totalDebt: 0,
+          totalPaid: 0,
+          totalRevenue: 0,
+          totalTons: 0,
+          invoiceCount: 0,
+          lastPurchaseDate: debt.date,
+          lastFactory: debt.factory
+        }
+
+        current.totalDebt += debt.remainingAmount
+        current.totalPaid += debt.paidAmount
+        current.totalRevenue += debt.amount
+        current.invoiceCount += 1
+
+        if (debt.date >= current.lastPurchaseDate) {
+          current.lastPurchaseDate = debt.date
+          current.lastFactory = debt.factory
+        }
+
+        summaryMap.set(debt.clientName, current)
+      })
+
     return Array.from(summaryMap.values()).sort((left, right) => right.totalDebt - left.totalDebt)
   })
 
@@ -550,13 +684,15 @@ export const useFactoryAccounting = () => {
       const contact = clientContacts.value.find(
         (client) => normalizeContactName(client.name) === normalizeClientName(summary.clientName)
       )
-      const saleCount = sales.value.filter(
-        (sale) => normalizeClientName(sale.clientName) === normalizeClientName(summary.clientName)
-      ).length
+      const saleCount =
+        sales.value.filter((sale) => normalizeClientName(sale.clientName) === normalizeClientName(summary.clientName)).length +
+        manualDebts.value.filter((record) => normalizeClientName(record.clientName) === normalizeClientName(summary.clientName)).length
 
       return {
         id: contact?.id ?? `client-${normalizeClientName(summary.clientName)}`,
         phone: contact?.phone ?? '',
+        telegramChatId: contact?.telegramChatId ?? '',
+        telegramUsername: contact?.telegramUsername ?? '',
         address: contact?.address ?? '',
         notes: contact?.notes ?? '',
         saleCount,
@@ -729,7 +865,7 @@ export const useFactoryAccounting = () => {
         debtorSummaries.value.find((record) => normalizeClientName(record.clientName) === clientKey) ?? null,
       recentSales: clientSales.slice(0, 5),
       lastSale: clientSales[0] ?? null,
-      saleCount: clientSales.length
+      saleCount: clientSales.length + manualDebts.value.filter((record) => normalizeClientName(record.clientName) === clientKey).length
     }
   }
 
@@ -808,13 +944,23 @@ export const useFactoryAccounting = () => {
     return [
       'Ming Bir Hazina',
       `${summary.clientName}, sizda qarz mavjud.`,
-      `Jami olingan yuk: ${summary.totalTons} tonna`,
+      summary.totalTons > 0 ? `Jami olingan yuk: ${summary.totalTons} tonna` : '',
       `Jami summa: ${formatSomValue(summary.totalRevenue)}`,
       `Qarz qoldiq: ${formatSomValue(summary.totalDebt)}`,
       `Oxirgi yuk sanasi: ${summary.lastPurchaseDate ? formatUzDate(summary.lastPurchaseDate) : '-'}`,
       `Tel: ${contact?.phone || '-'}`,
       'Iltimos, to`lovni tasdiqlang.'
     ].join('\n')
+  }
+
+  const buildTelegramLink = (username: string) => {
+    const normalizedUsername = username.trim().replace(/^@/, '')
+
+    if (!normalizedUsername) {
+      return ''
+    }
+
+    return `https://t.me/${normalizedUsername}`
   }
 
   const upsertReminder = (payload: Omit<ClientReminderSetting, 'id'> & { id?: string }) => {
@@ -848,7 +994,7 @@ export const useFactoryAccounting = () => {
     reminders.value = reminders.value.filter((record) => record.id !== id)
   }
 
-  const markReminderSent = (clientName: string) => {
+  const markReminderSent = (clientName: string, sentAt = new Date().toISOString()) => {
     if (!guardAdminMutation()) {
       return
     }
@@ -861,7 +1007,7 @@ export const useFactoryAccounting = () => {
 
     upsertReminder({
       ...reminder,
-      lastSentAt: new Date().toISOString()
+      lastSentAt: sentAt
     })
   }
 
@@ -873,8 +1019,11 @@ export const useFactoryAccounting = () => {
         return {
           ...record,
           phone: profile.contact?.phone ?? '',
+          telegramChatId: profile.contact?.telegramChatId ?? '',
+          telegramUsername: profile.contact?.telegramUsername ?? '',
           debt: profile.summary?.totalDebt ?? 0,
-          active: record.enabled && (profile.summary?.totalDebt ?? 0) > 0
+          active: record.enabled && (profile.summary?.totalDebt ?? 0) > 0,
+          readyForTelegram: Boolean(profile.contact?.telegramChatId)
         }
       })
       .sort((left, right) => Number(right.active) - Number(left.active))
@@ -944,6 +1093,8 @@ export const useFactoryAccounting = () => {
         type: 'client',
         name: clientName,
         phone: '',
+        telegramChatId: '',
+        telegramUsername: '',
         address: '',
         notes: ''
       })
@@ -964,6 +1115,8 @@ export const useFactoryAccounting = () => {
         type: 'supplier',
         name: supplierName,
         phone: '',
+        telegramChatId: '',
+        telegramUsername: '',
         address: '',
         notes: ''
       })
@@ -1108,6 +1261,42 @@ export const useFactoryAccounting = () => {
     payments.value = payments.value.filter((record) => record.saleId !== id)
   }
 
+  const addManualDebt = (payload: Omit<ManualDebtRecord, 'id' | 'remainingAmount'>) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    ensureClientContact(payload.clientName)
+    manualDebts.value.unshift(
+      normalizeManualDebtRecord({
+        id: createId('debt'),
+        ...payload
+      })
+    )
+  }
+
+  const updateManualDebt = (payload: ManualDebtRecord) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const index = manualDebts.value.findIndex((record) => record.id === payload.id)
+
+    if (index !== -1) {
+      ensureClientContact(payload.clientName)
+      manualDebts.value[index] = normalizeManualDebtRecord(payload)
+    }
+  }
+
+  const removeManualDebt = (id: string) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    manualDebts.value = manualDebts.value.filter((record) => record.id !== id)
+    payments.value = payments.value.filter((record) => record.saleId !== id)
+  }
+
   const addPayment = (payload: Omit<PaymentRecord, 'id'>) => {
     if (!guardAdminMutation()) {
       return
@@ -1184,6 +1373,9 @@ export const useFactoryAccounting = () => {
     const salesRecords = sales.value.filter(
       (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
     )
+    const manualDebtRecords = manualDebts.value.filter(
+      (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
+    )
     const paymentRecords = payments.value.filter(
       (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
     )
@@ -1245,7 +1437,10 @@ export const useFactoryAccounting = () => {
     const remainingProductTons = Number((totalOutputTons - totalSoldTons).toFixed(2))
     const totalRevenue = Number(salesRecords.reduce((sum, record) => sum + record.totalAmount, 0).toFixed(2))
     const totalPaid = Number(salesRecords.reduce((sum, record) => sum + record.paidAmount, 0).toFixed(2))
-    const totalDebt = Number(salesRecords.reduce((sum, record) => sum + record.remainingAmount, 0).toFixed(2))
+    const totalDebt = Number(
+      (salesRecords.reduce((sum, record) => sum + record.remainingAmount, 0) +
+        manualDebtRecords.reduce((sum, record) => sum + record.remainingAmount, 0)).toFixed(2)
+    )
     const totalProfit = Number((totalRevenue - totalCost).toFixed(2))
     const averageSalePrice = totalSoldTons ? Number((totalRevenue / getKilograms(totalSoldTons)).toFixed(2)) : 0
     const averageCostPerTon = totalOutputTons ? Number((totalCost / totalOutputTons).toFixed(2)) : 0
@@ -1262,6 +1457,22 @@ export const useFactoryAccounting = () => {
 
       return totals
     }, createComponentTotals())
+    const workerPaymentByFactory = factories.map((factoryName) => {
+      const workerAmount = roundAmount(
+        daily
+          .filter((record) => record.factory === factoryName)
+          .reduce((sum, record) => sum + getDailyRecordCostBreakdown(record).worker, 0)
+      )
+      const payoutMode = workerPayoutModeByFactory[factoryName]
+
+      return {
+        factory: factoryName,
+        payoutMode,
+        amount: workerAmount,
+        paidNow: payoutMode === 'daily' ? workerAmount : 0,
+        accrued: payoutMode === 'monthly' ? workerAmount : 0
+      }
+    })
     const totalOperationalExpenses = roundAmount(expenseRecords.reduce((sum, record) => sum + record.amount, 0))
     const soldTonsByFactory = factories.reduce<Record<FactoryName, number>>((map, factoryName) => {
       map[factoryName] = roundAmount(
@@ -1515,6 +1726,7 @@ export const useFactoryAccounting = () => {
         stone: roundAmount(productionComponentTotals.stone),
         bag: roundAmount(productionComponentTotals.bag)
       },
+      workerPaymentByFactory,
       totalOperationalExpenses,
       clientProfitRows,
       paymentMethodBreakdown,
@@ -1554,8 +1766,10 @@ export const useFactoryAccounting = () => {
     incomingLoads,
     payments,
     sales,
+    manualDebts,
     expenses,
     reminders,
+    monthlyArchiveRecords,
     factoryOptions,
     clientContacts,
     supplierContacts,
@@ -1571,6 +1785,7 @@ export const useFactoryAccounting = () => {
     getSupplierProfile,
     getClientReminder,
     buildSmsHref,
+    buildTelegramLink,
     buildSaleReceiptMessage,
     buildDebtReminderMessage,
     recentSales,
@@ -1595,6 +1810,9 @@ export const useFactoryAccounting = () => {
     addSale,
     updateSale,
     removeSale,
+    addManualDebt,
+    updateManualDebt,
+    removeManualDebt,
     addPayment,
     updatePayment,
     removePayment,

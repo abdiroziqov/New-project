@@ -9,6 +9,8 @@ definePageMeta({
 const { clientDirectory, sales, addContact, updateContact, removeContact } = useFactoryAccounting()
 const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
+const { downloadWorkbook } = useExcelExport()
+const { printWorkbook } = usePdfExport()
 
 const filters = reactive({
   search: ''
@@ -19,10 +21,15 @@ const editingClientId = ref<string | null>(null)
 const formError = ref('')
 const deleteDialogOpen = ref(false)
 const selectedClient = ref<ContactRecord | null>(null)
+const telegramLookupLoading = ref(false)
+const telegramLookupError = ref('')
+const telegramChats = ref<Array<{ chatId: string; username: string; fullName: string; lastText: string; updatedAt: string }>>([])
 
 const form = reactive({
   name: '',
   phone: '',
+  telegramChatId: '',
+  telegramUsername: '',
   address: '',
   notes: ''
 })
@@ -30,6 +37,7 @@ const form = reactive({
 const columns: TableColumn[] = [
   { key: 'clientName', label: 'Klient' },
   { key: 'phone', label: 'Telefon' },
+  { key: 'telegram', label: 'Telegram' },
   { key: 'balanceType', label: 'Balans turi' },
   { key: 'balanceAmount', label: 'Balans', align: 'right' },
   { key: 'totalTons', label: 'Jami tonna', align: 'right' },
@@ -57,13 +65,13 @@ const filteredClients = computed(() =>
       return true
     }
 
-    return [client.clientName, client.phone, client.address, client.notes].some((value) =>
+    return [client.clientName, client.phone, client.telegramChatId, client.telegramUsername, client.address, client.notes].some((value) =>
       value.toLowerCase().includes(normalizedSearch.value)
     )
   })
 )
 
-const filteredSales = computed(() =>
+const salesMatchingSearch = computed(() =>
   sales.value
     .filter((record) => {
       if (!normalizedSearch.value) {
@@ -74,14 +82,90 @@ const filteredSales = computed(() =>
     })
     .slice()
     .sort((left, right) => right.date.localeCompare(left.date))
-    .slice(0, 8)
 )
+
+const filteredSales = computed(() => salesMatchingSearch.value.slice(0, 8))
 
 const topClient = computed(() => filteredClients.value[0] ?? null)
 const totalReceivable = computed(() => filteredClients.value.reduce((sum, client) => sum + client.totalDebt, 0))
 const totalAdvance = computed(() => filteredClients.value.reduce((sum, client) => sum + client.totalAdvance, 0))
 const clientRows = computed<Record<string, unknown>[]>(() => [...filteredClients.value])
 const saleRows = computed<Record<string, unknown>[]>(() => [...filteredSales.value])
+
+const buildClientSheets = () => {
+  return [
+    {
+      name: 'Klientlar',
+      columns: [
+        { key: 'clientName', label: 'Klient' },
+        { key: 'phone', label: 'Telefon' },
+        { key: 'telegramChatId', label: 'Telegram Chat ID' },
+        { key: 'telegramUsername', label: 'Telegram user' },
+        { key: 'address', label: 'Manzil' },
+        { key: 'balanceLabel', label: 'Balans turi' },
+        { key: 'balanceAmount', label: 'Balans' },
+        { key: 'totalTons', label: 'Jami tonna' },
+        { key: 'averagePricePerTon', label: "O'rtacha narx / kg" },
+        { key: 'totalRevenue', label: 'Jami tushum' },
+        { key: 'saleCount', label: 'Sotuv soni' },
+        { key: 'lastPurchaseDate', label: 'Oxirgi sana' },
+        { key: 'notes', label: 'Izoh' }
+      ],
+      rows: filteredClients.value.map((client) => ({
+        clientName: client.clientName,
+        phone: client.phone,
+        telegramChatId: client.telegramChatId,
+        telegramUsername: client.telegramUsername ? `@${client.telegramUsername}` : '',
+        address: client.address,
+        balanceLabel: balanceLabel(client.balanceType),
+        balanceAmount: Math.round(client.balanceAmount),
+        totalTons: Number(client.totalTons.toFixed(2)),
+        averagePricePerTon: Math.round(client.averagePricePerTon),
+        totalRevenue: Math.round(client.totalRevenue),
+        saleCount: client.saleCount,
+        lastPurchaseDate: client.lastPurchaseDate ? formatDate(client.lastPurchaseDate) : '',
+        notes: client.notes
+      }))
+    },
+    {
+      name: 'Sotuvlar',
+      columns: [
+        { key: 'date', label: 'Sana' },
+        { key: 'factory', label: 'Zavod' },
+        { key: 'clientName', label: 'Klient' },
+        { key: 'productName', label: 'Mahsulot' },
+        { key: 'shipmentType', label: 'Yuk turi' },
+        { key: 'tons', label: 'Tonna' },
+        { key: 'pricePerTon', label: 'Narx / kg' },
+        { key: 'totalAmount', label: 'Jami summa' },
+        { key: 'paidAmount', label: "To'langan" },
+        { key: 'balanceLabel', label: 'Balans turi' },
+        { key: 'balanceAmount', label: 'Balans' }
+      ],
+      rows: salesMatchingSearch.value.map((record) => ({
+        date: formatDate(record.date),
+        factory: record.factory,
+        clientName: record.clientName,
+        productName: record.productName,
+        shipmentType: record.shipmentType,
+        tons: Number(record.tons.toFixed(2)),
+        pricePerTon: Math.round(record.pricePerTon),
+        totalAmount: Math.round(record.totalAmount),
+        paidAmount: Math.round(record.paidAmount),
+        balanceLabel: balanceLabel(record.balanceType),
+        balanceAmount: Math.round(record.balanceAmount)
+      }))
+    }
+  ]
+}
+
+const exportClientsExcel = () => {
+  downloadWorkbook('klientlar', buildClientSheets())
+}
+
+const exportClientsPdf = () => {
+  printWorkbook('Klientlar', buildClientSheets())
+}
 
 const balanceToneClass = (balanceType: unknown) => {
   if (balanceType === 'bizga_qarz') {
@@ -110,10 +194,15 @@ const balanceLabel = (balanceType: unknown) => {
 const resetForm = () => {
   form.name = ''
   form.phone = ''
+  form.telegramChatId = ''
+  form.telegramUsername = ''
   form.address = ''
   form.notes = ''
   editingClientId.value = null
   formError.value = ''
+  telegramLookupLoading.value = false
+  telegramLookupError.value = ''
+  telegramChats.value = []
 }
 
 const openCreateModal = () => {
@@ -138,6 +227,8 @@ const openEditModal = (row: Record<string, unknown>) => {
 
   form.name = client.clientName
   form.phone = client.phone
+  form.telegramChatId = client.telegramChatId
+  form.telegramUsername = client.telegramUsername
   form.address = client.address
   form.notes = client.notes
   editingClientId.value = String(client.id)
@@ -172,6 +263,8 @@ const saveClient = () => {
       type: 'client',
       name: normalizedName,
       phone: form.phone.trim(),
+      telegramChatId: form.telegramChatId.trim(),
+      telegramUsername: form.telegramUsername.trim().replace(/^@/, ''),
       address: form.address.trim(),
       notes: form.notes.trim(),
       createdAt: new Date().toISOString()
@@ -181,6 +274,8 @@ const saveClient = () => {
       type: 'client',
       name: normalizedName,
       phone: form.phone.trim(),
+      telegramChatId: form.telegramChatId.trim(),
+      telegramUsername: form.telegramUsername.trim().replace(/^@/, ''),
       address: form.address.trim(),
       notes: form.notes.trim()
     })
@@ -206,6 +301,8 @@ const askDelete = (row: Record<string, unknown>) => {
     type: 'client',
     name: client.clientName,
     phone: client.phone,
+    telegramChatId: client.telegramChatId,
+    telegramUsername: client.telegramUsername,
     address: client.address,
     notes: client.notes,
     createdAt: new Date().toISOString()
@@ -230,6 +327,30 @@ const closeDelete = () => {
   selectedClient.value = null
   deleteDialogOpen.value = false
 }
+
+const loadTelegramChats = async () => {
+  telegramLookupLoading.value = true
+  telegramLookupError.value = ''
+
+  try {
+    const response = await $fetch<{ chats: Array<{ chatId: string; username: string; fullName: string; lastText: string; updatedAt: string }> }>(
+      '/api/notifications/telegram/chats'
+    )
+    telegramChats.value = response.chats
+  } catch (error) {
+    telegramLookupError.value = error instanceof Error ? error.message : 'Telegram chatlarni olishda xato.'
+  } finally {
+    telegramLookupLoading.value = false
+  }
+}
+
+const applyTelegramChat = (chat: { chatId: string; username: string }) => {
+  form.telegramChatId = chat.chatId
+
+  if (chat.username && !form.telegramUsername.trim()) {
+    form.telegramUsername = chat.username
+  }
+}
 </script>
 
 <template>
@@ -239,7 +360,10 @@ const closeDelete = () => {
       <p class="page-subtitle">Klientni shu yerda qo`shasiz. Keyin `Sotuvlar` sahifasida tanlaysiz va balansi ko`rinadi.</p>
       <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
     </div>
-    <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Klient qo'shish</button>
+    <div class="flex flex-wrap gap-2">
+      <ExportActions @excel="exportClientsExcel" @pdf="exportClientsPdf" />
+      <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Klient qo'shish</button>
+    </div>
   </section>
 
   <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -266,8 +390,19 @@ const closeDelete = () => {
       </header>
 
       <AppTable :columns="columns" :rows="clientRows" empty-text="Klientlar topilmadi.">
+        <template #cell-clientName="{ value }">
+          <span class="font-semibold text-slate-900">{{ value }}</span>
+        </template>
+
         <template #cell-balanceType="{ value }">
           <span :class="['font-semibold', balanceToneClass(value)]">{{ balanceLabel(value) }}</span>
+        </template>
+
+        <template #cell-telegram="{ row }">
+          <span v-if="row.telegramChatId" class="text-xs font-semibold text-sky-700">
+            {{ row.telegramUsername ? `@${row.telegramUsername}` : row.telegramChatId }}
+          </span>
+          <span v-else class="text-xs text-slate-400">Ulanmagan</span>
         </template>
 
         <template #cell-balanceAmount="{ row, value }">
@@ -324,9 +459,49 @@ const closeDelete = () => {
   <AppModal :open="modalOpen" :title="editingClientId ? 'Klientni tahrirlash' : 'Klient qo`shish'" size="md" @close="modalOpen = false">
     <div class="grid gap-4">
       <AppInput v-model="form.name" label="Klient nomi" placeholder="Masalan, Begzod" required />
-      <AppInput v-model="form.phone" label="Telefon" placeholder="Masalan, +998 90 123 45 67" />
+      <AppInput v-model="form.phone" mask="phone" label="Telefon" placeholder="Masalan, +998 90 123 45 67" autocomplete="tel" />
+      <div class="grid gap-3 md:grid-cols-[1fr_auto]">
+        <AppInput v-model="form.telegramChatId" label="Telegram chat ID" placeholder="Masalan, 123456789" />
+        <div class="flex items-end">
+          <button type="button" class="btn-secondary w-full" @click="loadTelegramChats">
+            {{ telegramLookupLoading ? 'Yuklanmoqda...' : 'Telegramdan olish' }}
+          </button>
+        </div>
+      </div>
+      <AppInput v-model="form.telegramUsername" label="Telegram user" placeholder="Masalan, begzod_92" />
       <AppInput v-model="form.address" label="Manzil" placeholder="Masalan, Qumqo'rg'on" />
       <AppInput v-model="form.notes" label="Izoh" placeholder="Doimiy klient yoki maxsus eslatma" />
+
+      <div v-if="telegramLookupError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        {{ telegramLookupError }}
+      </div>
+
+      <div v-if="telegramChats.length" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Oxirgi Telegram chatlar</p>
+        <div class="mt-3 space-y-2">
+          <button
+            v-for="chat in telegramChats"
+            :key="chat.chatId"
+            type="button"
+            class="flex w-full items-start justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-brand-300 hover:bg-brand-50"
+            @click="applyTelegramChat(chat)"
+          >
+            <div>
+              <p class="text-sm font-semibold text-slate-900">
+                {{ chat.fullName }}
+                <span v-if="chat.username" class="text-sky-700"> · @{{ chat.username }}</span>
+              </p>
+              <p class="mt-1 text-xs text-slate-500">{{ chat.chatId }}</p>
+              <p v-if="chat.lastText" class="mt-1 text-xs text-slate-400">{{ chat.lastText }}</p>
+            </div>
+            <span class="text-xs font-semibold text-brand-700">Tanlash</span>
+          </button>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-500">
+        Telegram bot yozishi uchun klient botga bir marta yozib qo'yishi va shu yerga `chat id` kiritilishi kerak.
+      </p>
 
       <p v-if="formError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
         {{ formError }}
