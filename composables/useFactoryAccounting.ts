@@ -77,7 +77,17 @@ const workerPayoutModeByFactory: Record<FactoryName, 'daily' | 'monthly'> = {
 export const productTypes: ProductType[] = ['Qum', 'Mel']
 export const vehicleTypes: VehicleType[] = ['Howo', 'Kamaz']
 export const shipmentTypes: ShipmentType[] = ['qoplik', 'rasipnoy']
-export const expenseCategories: ExpenseCategory[] = ['Ishchi', 'Ovqat', 'Svet', 'Bozorlik', 'Yuklash', 'Boshqa']
+export const expenseCategories: ExpenseCategory[] = [
+  'Ishchi',
+  'Ovqat',
+  'Svet',
+  'Bozorlik',
+  'Yuklash',
+  'Sementovoz kredit',
+  'Panel kredit',
+  'Kobalt kredit',
+  'Boshqa'
+]
 export const paymentMethods: PaymentMethod[] = ['Naqd', 'Click', 'Prichesleniya']
 export const reminderFrequencies: ReminderFrequency[] = ['daily', 'every_2_days']
 export const archiveFactoryScopes: ArchiveFactoryScope[] = ['Oybek', 'Jamshid', 'combined']

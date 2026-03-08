@@ -25,7 +25,6 @@ type OutstandingEntry = {
 
 const {
   latestDate,
-  factoryOptions,
   paymentMethods,
   expenseCategories,
   clientOptions,
@@ -216,8 +215,8 @@ const saveClientPayment = () => {
 const saveExpense = () => {
   expenseError.value = ''
 
-  if (!expenseForm.date || !expenseForm.factory || !expenseForm.description.trim()) {
-    expenseError.value = 'Sana, zavod va tavsifni kiriting.'
+  if (!expenseForm.date || !expenseForm.description.trim()) {
+    expenseError.value = 'Sana va tavsifni kiriting.'
     return
   }
 
@@ -381,7 +380,6 @@ watch(
 
       <div class="space-y-4">
         <AppInput v-model="expenseForm.date" type="date" label="Sana" />
-        <AppSelect v-model="expenseForm.factory" label="Zavod" :options="factoryOptions" />
         <AppSelect
           v-model="expenseForm.category"
           label="Kategoriya"

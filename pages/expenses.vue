@@ -157,8 +157,8 @@ const saveExpense = () => {
     notes: expenseForm.notes.trim()
   }
 
-  if (!payload.date || !payload.factory || !payload.description) {
-    formError.value = 'Sana, zavod va tavsifni kiriting.'
+  if (!payload.date || !payload.description) {
+    formError.value = 'Sana va tavsifni kiriting.'
     return
   }
 
@@ -380,7 +380,6 @@ const resetCostForm = () => {
   <AppModal :open="modalOpen" :title="editingId ? 'Chiqimni tahrirlash' : 'Chiqim qo`shish'" @close="modalOpen = false">
     <div class="grid gap-4 md:grid-cols-2">
       <AppInput v-model="expenseForm.date" type="date" label="Sana" required />
-      <AppSelect v-model="expenseForm.factory" label="Zavod" :options="factoryOptions" required />
       <AppSelect
         v-model="expenseForm.category"
         label="Kategoriya"

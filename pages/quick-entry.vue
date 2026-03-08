@@ -668,7 +668,6 @@ watch(
 
       <div class="grid gap-4 md:grid-cols-2">
         <AppInput v-model="expenseForm.date" type="date" label="Sana" />
-        <AppSelect v-model="expenseForm.factory" label="Zavod" :options="factoryOptions" />
         <AppSelect
           v-model="expenseForm.category"
           label="Kategoriya"
