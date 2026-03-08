@@ -209,7 +209,7 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
   </section>
 
   <section class="grid gap-4 xl:grid-cols-3">
-    <article class="panel p-5">
+    <article class="panel min-w-0 overflow-hidden p-5">
       <header class="mb-4 flex items-center justify-between">
         <div>
           <h3 class="text-base font-semibold text-slate-900">{{ t('Oxirgi sotuvlar') }}</h3>
@@ -232,7 +232,7 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
       </AppTable>
     </article>
 
-    <article class="panel p-5">
+    <article class="panel min-w-0 overflow-hidden p-5">
       <header class="mb-4 flex items-center justify-between">
         <div>
           <h3 class="text-base font-semibold text-slate-900">{{ t('Oxirgi kirimlar') }}</h3>
@@ -255,7 +255,7 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
       </AppTable>
     </article>
 
-    <article class="panel p-5">
+    <article class="panel min-w-0 overflow-hidden p-5">
       <header class="mb-4 flex items-center justify-between">
         <div>
           <h3 class="text-base font-semibold text-slate-900">{{ t('Oxirgi chiqimlar') }}</h3>

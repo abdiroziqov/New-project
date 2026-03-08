@@ -43,7 +43,7 @@ const getCellValue = (key: string, value: unknown) => {
 </script>
 
 <template>
-  <div class="overflow-x-auto">
+  <div class="w-full max-w-full overflow-x-auto">
     <table class="min-w-full border-separate border-spacing-0 text-sm">
       <thead>
         <tr>

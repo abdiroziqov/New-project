@@ -6,13 +6,13 @@ const sidebarOpen = ref(false)
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-100">
+  <div class="min-h-screen overflow-x-hidden bg-slate-100">
     <AppSidebar :open="sidebarOpen" @close="sidebarOpen = false" />
 
-    <div class="lg:pl-64">
+    <div class="min-w-0 lg:pl-64">
       <AppHeader @toggle-sidebar="sidebarOpen = true" />
 
-      <main class="space-y-6 p-4 lg:p-6">
+      <main class="min-w-0 space-y-6 overflow-x-hidden p-4 lg:p-6">
         <slot />
       </main>
     </div>

@@ -42,18 +42,18 @@ const handleLogout = async () => {
 
 <template>
   <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-    <div class="flex h-16 items-center justify-between px-4 lg:px-6">
-      <div class="flex items-center gap-3">
+    <div class="flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-3 lg:h-16 lg:flex-nowrap lg:px-6 lg:py-0">
+      <div class="flex min-w-0 flex-1 items-center gap-3">
         <button
           type="button"
-          class="inline-flex rounded-lg border border-slate-300 p-2 text-slate-600 lg:hidden"
+          class="inline-flex shrink-0 rounded-lg border border-slate-300 p-2 text-slate-600 lg:hidden"
           @click="emit('toggleSidebar')"
         >
           {{ t('Menu') }}
         </button>
-        <div>
-          <h1 class="text-lg font-bold text-slate-900">{{ pageTitle }}</h1>
-          <p class="text-xs text-slate-500">
+        <div class="min-w-0">
+          <h1 class="truncate text-lg font-bold text-slate-900">{{ pageTitle }}</h1>
+          <p class="max-w-[11rem] truncate text-xs text-slate-500 sm:max-w-none">
             <NuxtLink to="/dashboard" class="font-semibold text-slate-600 transition hover:text-brand-700">
               {{ t(runtimeConfig.public.appName) }}
             </NuxtLink>
@@ -62,7 +62,7 @@ const handleLogout = async () => {
         </div>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
         <div class="hidden items-center rounded-lg bg-slate-100 p-1 sm:flex">
           <button
             v-for="item in localeOptions"
@@ -81,7 +81,7 @@ const handleLogout = async () => {
           <p class="text-sm font-semibold text-slate-800">{{ user?.name }}</p>
           <p class="text-xs uppercase tracking-wide text-slate-500">{{ t(String(user?.role ?? '-')) }}</p>
         </div>
-        <button type="button" class="btn-secondary" @click="handleLogout">{{ t('Chiqish') }}</button>
+        <button type="button" class="btn-secondary px-3 sm:px-4" @click="handleLogout">{{ t('Chiqish') }}</button>
       </div>
     </div>
 
