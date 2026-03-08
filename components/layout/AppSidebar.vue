@@ -15,6 +15,7 @@ const route = useRoute()
 const runtimeConfig = useRuntimeConfig()
 const { user } = useAuth()
 const { mainNavigation, manualNavigation } = useAppNavigation()
+const { t } = useUiLocale()
 
 const isActive = (path: string) => {
   if (path === '/') {
@@ -40,9 +41,9 @@ const isActive = (path: string) => {
   >
     <div class="border-b border-slate-200 px-4 py-4">
       <NuxtLink to="/" class="block rounded-xl transition hover:bg-slate-50" @click="emit('close')">
-        <p class="text-[10px] font-semibold uppercase tracking-[0.34em] text-brand-600">Korxona</p>
-        <h2 class="mt-1 text-lg font-black tracking-tight text-slate-900">{{ runtimeConfig.public.appName }}</h2>
-        <p class="mt-1 text-xs text-slate-500">{{ runtimeConfig.public.appSubtitle }}</p>
+        <p class="text-[10px] font-semibold uppercase tracking-[0.34em] text-brand-600">{{ t('Korxona') }}</p>
+        <h2 class="mt-1 text-lg font-black tracking-tight text-slate-900">{{ t(runtimeConfig.public.appName) }}</h2>
+        <p class="mt-1 text-xs text-slate-500">{{ t(runtimeConfig.public.appSubtitle) }}</p>
       </NuxtLink>
     </div>
 
@@ -65,7 +66,7 @@ const isActive = (path: string) => {
 
       <div v-if="manualNavigation.length" class="space-y-1 rounded-2xl border border-slate-200 bg-slate-50 p-2">
         <p class="px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-          Qo'lda Kiritish
+          {{ t("Qo'lda Kiritish") }}
         </p>
 
         <NuxtLink
@@ -85,7 +86,7 @@ const isActive = (path: string) => {
     </nav>
 
     <div class="absolute inset-x-0 bottom-0 border-t border-slate-200 p-3 text-xs text-slate-500">
-      Login: <span class="font-semibold text-slate-700">{{ user?.role ?? '-' }}</span>
+      {{ t('Login') }}: <span class="font-semibold text-slate-700">{{ t(String(user?.role ?? '-')) }}</span>
     </div>
   </aside>
 </template>

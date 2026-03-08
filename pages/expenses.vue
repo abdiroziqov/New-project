@@ -22,6 +22,7 @@ const {
 const { isAdmin } = useAuth()
 const { formatSom } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
+const { t } = useUiLocale()
 
 const createExpenseFormState = (): Omit<OperationalExpense, 'id'> => ({
   date: latestDate.value,
@@ -240,11 +241,11 @@ const resetCostForm = () => {
 <template>
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h2 class="page-title">Chiqimlar</h2>
-      <p class="page-subtitle">Kunlik chiqimlar, default sotuv narxlari va avtomatik tannarx sozlamalari.</p>
+      <h2 class="page-title">{{ t('Chiqimlar') }}</h2>
+      <p class="page-subtitle">{{ t("Kunlik chiqimlar, default sotuv narxlari va avtomatik tannarx sozlamalari.") }}</p>
       <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
     </div>
-    <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Chiqim qo'shish</button>
+    <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">{{ t("Chiqim qo'shish") }}</button>
   </section>
 
   <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -256,10 +257,10 @@ const resetCostForm = () => {
 
   <section class="panel p-4">
     <div class="flex flex-wrap gap-2 border-b border-slate-100 pb-4">
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">Joriy oy</button>
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">Oxirgi 30 kun</button>
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">Oxirgi 7 kun</button>
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">Hammasi</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">{{ t('Joriy oy') }}</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">{{ t('Oxirgi 30 kun') }}</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">{{ t('Oxirgi 7 kun') }}</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">{{ t('Hammasi') }}</button>
     </div>
 
     <div class="mt-4 grid gap-3 md:grid-cols-5">
@@ -273,7 +274,7 @@ const resetCostForm = () => {
         placeholder="Hamma kategoriya"
       />
       <div class="flex items-end">
-        <button type="button" class="btn-secondary w-full" @click="clearFilters">Filtrni tozalash</button>
+        <button type="button" class="btn-secondary w-full" @click="clearFilters">{{ t('Filtrni tozalash') }}</button>
       </div>
     </div>
   </section>
@@ -296,7 +297,7 @@ const resetCostForm = () => {
       <template #cell-actions="{ row }">
         <div class="flex justify-end gap-2">
           <template v-if="isAdmin">
-            <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">Tahrirlash</button>
+            <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">{{ t('Tahrirlash') }}</button>
             <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askDelete(row)">O'chirish</button>
           </template>
           <span v-else class="text-xs text-slate-400">Faqat admin</span>
@@ -364,8 +365,8 @@ const resetCostForm = () => {
       </div>
 
       <div v-if="isAdmin" class="mt-4 flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="resetCostForm">Orqaga qaytarish</button>
-        <button type="button" class="btn-primary" @click="saveDefaultCosts">Saqlash</button>
+        <button type="button" class="btn-secondary" @click="resetCostForm">{{ t('Orqaga qaytarish') }}</button>
+        <button type="button" class="btn-primary" @click="saveDefaultCosts">{{ t('Saqlash') }}</button>
       </div>
 
       <div class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -405,9 +406,9 @@ const resetCostForm = () => {
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="modalOpen = false">Bekor qilish</button>
+        <button type="button" class="btn-secondary" @click="modalOpen = false">{{ t('Bekor qilish') }}</button>
         <button type="button" class="btn-primary" @click="saveExpense">
-          {{ editingId ? 'Saqlash' : 'Qo`shish' }}
+          {{ editingId ? t('Saqlash') : t("Qo`shish") }}
         </button>
       </div>
     </template>

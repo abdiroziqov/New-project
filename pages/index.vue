@@ -9,6 +9,7 @@ const { latestDate, todaySummary, overallSummary, todayFactoryBreakdown, recentS
   useFactoryAccounting()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { getSupplierChipClass } = useSupplierHighlight()
+const { t } = useUiLocale()
 
 const salesColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -73,22 +74,22 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
     <article class="panel overflow-hidden p-6">
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="space-y-3">
-          <span class="data-chip">Oxirgi sana: {{ latestDateLabel }}</span>
+          <span class="data-chip">{{ t('Oxirgi sana') }}: {{ latestDateLabel }}</span>
           <div>
-            <h2 class="page-title">Ming Bir Hazina uchun kunlik hisob</h2>
+            <h2 class="page-title">{{ t('Ming Bir Hazina uchun kunlik hisob') }}</h2>
             <p class="page-subtitle">
-              Oybek va Jamshid zavodlarining tosh kirimi, sarf, sotuv va foydasi bir joyda.
+              {{ t("Oybek va Jamshid zavodlarining tosh kirimi, sarf, sotuv va foydasi bir joyda.") }}
             </p>
           </div>
         </div>
 
         <div class="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
           <div class="rounded-2xl bg-sky-50 px-4 py-3">
-            <p class="text-xs uppercase tracking-wide text-sky-700">Bugungi kirim</p>
+            <p class="text-xs uppercase tracking-wide text-sky-700">{{ t('Bugungi kirim') }}</p>
             <p class="mt-1 text-xl font-bold text-slate-900">{{ formatTons(todaySummary.totalIncomingTons) }}</p>
           </div>
           <div class="rounded-2xl bg-amber-50 px-4 py-3">
-            <p class="text-xs uppercase tracking-wide text-amber-700">Bugungi sotuv</p>
+            <p class="text-xs uppercase tracking-wide text-amber-700">{{ t('Bugungi sotuv') }}</p>
             <p class="mt-1 text-xl font-bold text-slate-900">{{ formatTons(todaySummary.totalSoldTons) }}</p>
           </div>
         </div>
@@ -96,7 +97,7 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
     </article>
 
     <article class="panel p-6">
-      <p class="text-sm font-semibold text-slate-700">Bugungi qisqa ko'rinish</p>
+      <p class="text-sm font-semibold text-slate-700">{{ t("Bugungi qisqa ko'rinish") }}</p>
       <div class="mt-4 space-y-3">
         <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
           <span class="text-sm text-slate-500">Tushum</span>
@@ -124,8 +125,8 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
 
   <section class="space-y-3">
     <div>
-      <h3 class="text-base font-semibold text-slate-900">Pul qoldig'i</h3>
-      <p class="text-sm text-slate-500">To'lovlar tarixi va chiqimlar bo'yicha joriy summa.</p>
+      <h3 class="text-base font-semibold text-slate-900">{{ t("Pul qoldig'i") }}</h3>
+      <p class="text-sm text-slate-500">{{ t("To'lovlar tarixi va chiqimlar bo'yicha joriy summa.") }}</p>
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -147,8 +148,8 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
 
   <section class="space-y-3">
     <div>
-      <h3 class="text-base font-semibold text-slate-900">Ishchi to'lovi tartibi</h3>
-      <p class="text-sm text-slate-500">Jamshid kunlik beriladi, Oybek esa oy oxirigacha yig'iladi.</p>
+      <h3 class="text-base font-semibold text-slate-900">{{ t("Ishchi to'lovi tartibi") }}</h3>
+      <p class="text-sm text-slate-500">{{ t("Jamshid kunlik beriladi, Oybek esa oy oxirigacha yig'iladi.") }}</p>
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2">
@@ -165,11 +166,11 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
     >
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-xs uppercase tracking-wide text-brand-600">{{ card.factory }} zavod</p>
+          <p class="text-xs uppercase tracking-wide text-brand-600">{{ t(card.factory) }} {{ t('zavod') }}</p>
           <h3 class="mt-1 text-xl font-bold text-slate-900">{{ formatTons(card.outputTons) }}</h3>
-          <p class="text-sm text-slate-500">Bugungi ishlab chiqish</p>
+          <p class="text-sm text-slate-500">{{ t('Bugungi ishlab chiqish') }}</p>
         </div>
-        <span class="data-chip">Sotildi: {{ formatTons(card.soldTons) }}</span>
+        <span class="data-chip">{{ t('Sotildi') }}: {{ formatTons(card.soldTons) }}</span>
       </div>
 
       <div class="mt-4 grid gap-3 sm:grid-cols-2">
@@ -211,8 +212,8 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
     <article class="panel p-5">
       <header class="mb-4 flex items-center justify-between">
         <div>
-          <h3 class="text-base font-semibold text-slate-900">Oxirgi sotuvlar</h3>
-          <p class="text-xs text-slate-500">Kimga necha tonna ketgani</p>
+          <h3 class="text-base font-semibold text-slate-900">{{ t('Oxirgi sotuvlar') }}</h3>
+          <p class="text-xs text-slate-500">{{ t('Kimga necha tonna ketgani') }}</p>
         </div>
       </header>
 
@@ -234,8 +235,8 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
     <article class="panel p-5">
       <header class="mb-4 flex items-center justify-between">
         <div>
-          <h3 class="text-base font-semibold text-slate-900">Oxirgi kirimlar</h3>
-          <p class="text-xs text-slate-500">Howo yoki Kamazda kelgan tosh</p>
+          <h3 class="text-base font-semibold text-slate-900">{{ t('Oxirgi kirimlar') }}</h3>
+          <p class="text-xs text-slate-500">{{ t('Howo yoki Kamazda kelgan tosh') }}</p>
         </div>
       </header>
 
@@ -257,8 +258,8 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
     <article class="panel p-5">
       <header class="mb-4 flex items-center justify-between">
         <div>
-          <h3 class="text-base font-semibold text-slate-900">Oxirgi chiqimlar</h3>
-          <p class="text-xs text-slate-500">Svet, ishchi, bozorlik va boshqa chiqimlar</p>
+          <h3 class="text-base font-semibold text-slate-900">{{ t('Oxirgi chiqimlar') }}</h3>
+          <p class="text-xs text-slate-500">{{ t('Svet, ishchi, bozorlik va boshqa chiqimlar') }}</p>
         </div>
       </header>
 

@@ -20,6 +20,7 @@ const {
 const { isAdmin } = useAuth()
 const { formatSom, formatTons } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
+const { t } = useUiLocale()
 
 const createFormState = (): Omit<DailyFactoryRecord, 'id'> => ({
   date: latestDate.value,
@@ -274,11 +275,11 @@ watch(
 <template>
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h2 class="page-title">Kunlik hisob</h2>
-      <p class="page-subtitle">Har bir zavod bo'yicha kunlik kirim va sarfni kiriting, tannarx esa default narxlardan avtomatik hisoblanadi.</p>
+      <h2 class="page-title">{{ t('Kunlik Hisob') }}</h2>
+      <p class="page-subtitle">{{ t("Har bir zavod bo'yicha kunlik kirim va sarfni kiriting, tannarx esa default narxlardan avtomatik hisoblanadi.") }}</p>
       <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
     </div>
-    <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Kunlik yozuv qo'shish</button>
+    <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">{{ t("Kunlik yozuv qo'shish") }}</button>
   </section>
 
   <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -291,10 +292,10 @@ watch(
 
   <section class="panel p-4">
     <div class="flex flex-wrap gap-2 border-b border-slate-100 pb-4">
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">Joriy oy</button>
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">Oxirgi 30 kun</button>
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">Oxirgi 7 kun</button>
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">Hammasi</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">{{ t('Joriy oy') }}</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">{{ t('Oxirgi 30 kun') }}</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">{{ t('Oxirgi 7 kun') }}</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">{{ t('Hammasi') }}</button>
     </div>
 
     <div class="mt-4 grid gap-3 md:grid-cols-4">
@@ -302,7 +303,7 @@ watch(
       <AppInput v-model="filters.endDate" type="date" label="Tugash sanasi" />
       <AppSelect v-model="filters.factory" label="Zavod" :options="factoryOptions" placeholder="Hamma zavod" />
       <div class="flex items-end">
-        <button type="button" class="btn-secondary w-full" @click="clearFilters">Filtrni tozalash</button>
+        <button type="button" class="btn-secondary w-full" @click="clearFilters">{{ t('Filtrni tozalash') }}</button>
       </div>
     </div>
   </section>
@@ -328,8 +329,8 @@ watch(
       <template #cell-actions="{ row }">
         <div class="flex justify-end gap-2">
           <template v-if="isAdmin">
-            <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">Tahrirlash</button>
-            <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askDelete(row)">O'chirish</button>
+            <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">{{ t('Tahrirlash') }}</button>
+            <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askDelete(row)">{{ t("O'chirish") }}</button>
           </template>
           <span v-else class="text-xs text-slate-400">Faqat admin</span>
         </div>
@@ -452,9 +453,9 @@ watch(
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="modalOpen = false">Bekor qilish</button>
+        <button type="button" class="btn-secondary" @click="modalOpen = false">{{ t('Bekor qilish') }}</button>
         <button type="button" class="btn-primary" @click="saveRecord">
-          {{ editingId ? 'Saqlash' : 'Qo`shish' }}
+          {{ editingId ? t('Saqlash') : t("Qo`shish") }}
         </button>
       </div>
     </template>

@@ -12,6 +12,8 @@ const props = withDefaults(defineProps<Props>(), {
   closeOnBackdrop: true
 })
 
+const { t } = useUiLocale()
+
 const emit = defineEmits<{
   close: []
 }>()
@@ -62,7 +64,7 @@ onUnmounted(() => {
       >
         <div :class="['panel flex max-h-[calc(100dvh-1.5rem)] w-full flex-col overflow-hidden sm:max-h-[calc(100dvh-3rem)]', sizeClass]">
           <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-5">
-            <h3 class="text-base font-semibold text-slate-900">{{ title }}</h3>
+            <h3 class="text-base font-semibold text-slate-900">{{ t(title) }}</h3>
             <button
               type="button"
               class="rounded-md p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"

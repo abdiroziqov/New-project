@@ -39,6 +39,7 @@ const emit = defineEmits<{
 }>()
 
 const generatedId = useId()
+const { t } = useUiLocale()
 const inputId = computed(() => props.id || `input-${generatedId}`)
 const isMaskedNumber = computed(() => props.type === 'number')
 const isPhoneMask = computed(() => props.mask === 'phone')
@@ -200,7 +201,7 @@ const onInput = (event: Event) => {
 <template>
   <div class="space-y-1.5">
     <label v-if="label" :for="inputId" class="text-sm font-medium text-slate-700">
-      {{ label }}
+      {{ t(label) }}
     </label>
 
     <input
@@ -208,7 +209,7 @@ const onInput = (event: Event) => {
       :type="inputType"
       :inputmode="inputMode"
       :value="displayValue"
-      :placeholder="placeholder"
+      :placeholder="t(placeholder)"
       :list="list || undefined"
       :autocomplete="autocomplete || undefined"
       :min="min"

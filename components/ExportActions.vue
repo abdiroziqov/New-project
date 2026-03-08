@@ -16,6 +16,7 @@ const emit = defineEmits<{
   pdf: []
 }>()
 
+const { t } = useUiLocale()
 const open = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
 
@@ -66,17 +67,17 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="rootRef" class="relative">
-    <button type="button" class="btn-secondary" @click="toggleMenu">{{ props.label }}</button>
+    <button type="button" class="btn-secondary" @click="toggleMenu">{{ t(props.label) }}</button>
 
     <div
       v-if="open"
       class="absolute right-0 z-30 mt-2 min-w-40 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl"
     >
       <button type="button" class="flex w-full rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50" @click="onExcel">
-        {{ props.excelLabel }}
+        {{ t(props.excelLabel) }}
       </button>
       <button type="button" class="mt-1 flex w-full rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50" @click="onPdf">
-        {{ props.pdfLabel }}
+        {{ t(props.pdfLabel) }}
       </button>
     </div>
   </div>

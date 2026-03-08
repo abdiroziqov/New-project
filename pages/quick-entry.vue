@@ -34,6 +34,7 @@ const {
 } = useFactoryAccounting()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { getSupplierInputClass } = useSupplierHighlight()
+const { t } = useUiLocale()
 
 type IncomingLoadQuickForm = {
   date: string
@@ -351,8 +352,8 @@ watch(
 <template>
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h2 class="page-title">Tez kiritish</h2>
-      <p class="page-subtitle">Bugungi 20 tonna, kimga yuk ketgani yoki 1 Howo tosh kelganini shu yerda tez kiriting.</p>
+      <h2 class="page-title">{{ t('Tez Kiritish') }}</h2>
+      <p class="page-subtitle">{{ t('Bugungi 20 tonna, kimga yuk ketgani yoki 1 Howo tosh kelganini shu yerda tez kiriting.') }}</p>
     </div>
     <span v-if="infoMessage" class="rounded-full bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-700">
       {{ infoMessage }}
@@ -363,7 +364,7 @@ watch(
     <article class="panel p-5">
       <header class="mb-4 flex items-center justify-between">
         <div>
-          <h3 class="text-base font-semibold text-slate-900">1. Kunlik zavod hisobi</h3>
+          <h3 class="text-base font-semibold text-slate-900">{{ t('1. Kunlik zavod hisobi') }}</h3>
           <p class="text-xs text-slate-500">Masalan, zavod bugun 20 tonna mahsulot chiqardi. 1 tonna qoplik = 25 qop, rasipnoyda qop yo'q.</p>
         </div>
         <span class="data-chip">Default tannarx ishlaydi</span>
@@ -426,13 +427,13 @@ watch(
       </div>
 
       <div class="mt-4 flex justify-end">
-        <button type="button" class="btn-primary" @click="saveDaily">Kunlik yozuvni qo'shish</button>
+        <button type="button" class="btn-primary" @click="saveDaily">{{ t("Kunlik yozuvni qo'shish") }}</button>
       </div>
     </article>
 
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">2. Tosh kirimi</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t('2. Tosh kirimi') }}</h3>
         <p class="text-xs text-slate-500">Masalan, 1 Howo tosh keldi va jami narxi 2 000 000 bo'ldi</p>
       </header>
 
@@ -481,23 +482,28 @@ watch(
       </div>
 
       <div class="mt-4 flex justify-end">
-        <button type="button" class="btn-primary" @click="saveLoad">Tosh kirimini qo'shish</button>
+        <button type="button" class="btn-primary" @click="saveLoad">{{ t("Tosh kirimini qo'shish") }}</button>
       </div>
     </article>
 
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">3. Sotuv kiritish</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t('3. Sotuv kiritish') }}</h3>
         <p class="text-xs text-slate-500">Masalan, Begzod 20 tonna qum oldi</p>
       </header>
 
       <div class="grid gap-4 md:grid-cols-2">
         <AppInput v-model="saleForm.date" type="date" label="Sana" />
         <AppInput v-model="saleForm.time" type="time" label="Soat" />
-        <AppSelect v-model="saleForm.factory" label="Zavod" :options="factoryOptions" />
 
         <div class="space-y-2 md:col-span-2">
-          <AppSelect v-model="saleForm.clientName" label="Klient" :options="clientOptions" placeholder="Klientni tanlang" />
+          <AppSelect
+            v-model="saleForm.clientName"
+            label="Klient"
+            :options="clientOptions"
+            :translate-options="false"
+            placeholder="Klientni tanlang"
+          />
 
           <div v-if="matchedSaleClients.length" class="flex flex-wrap gap-2">
             <button
@@ -650,13 +656,13 @@ watch(
       </div>
 
       <div class="mt-4 flex justify-end">
-        <button type="button" class="btn-primary" @click="saveSale">Sotuvni qo'shish</button>
+        <button type="button" class="btn-primary" @click="saveSale">{{ t("Sotuvni qo'shish") }}</button>
       </div>
     </article>
 
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">4. Chiqim kiritish</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t('4. Chiqim kiritish') }}</h3>
         <p class="text-xs text-slate-500">Svet, ishchi, bozorlik yoki boshqa chiqimlar</p>
       </header>
 
@@ -681,7 +687,7 @@ watch(
       </div>
 
       <div class="mt-4 flex justify-end">
-        <button type="button" class="btn-primary" @click="saveExpense">Chiqimni qo'shish</button>
+        <button type="button" class="btn-primary" @click="saveExpense">{{ t("Chiqimni qo'shish") }}</button>
       </div>
     </article>
   </section>

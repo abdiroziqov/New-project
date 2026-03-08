@@ -27,6 +27,7 @@ const { formatSom, formatTons, formatDate } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
 const { downloadWorkbook } = useExcelExport()
 const { printWorkbook } = usePdfExport()
+const { t } = useUiLocale()
 
 const createFormState = (): Omit<
   SaleRecord,
@@ -371,6 +372,8 @@ const saveSale = () => {
     return
   }
 
+  formError.value = ''
+
   const payload = {
     date: form.date,
     time: form.time,
@@ -397,6 +400,11 @@ const saveSale = () => {
 
   if (payload.paidAmount < 0) {
     formError.value = 'To`langan summa manfiy bo`lmasin.'
+    return
+  }
+
+  if (payload.paidAmount > formTotal.value) {
+    formError.value = 'To`langan summa jami summadan katta bo`lmasin.'
     return
   }
 
@@ -521,13 +529,13 @@ watch(
 <template>
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h2 class="page-title">Sotuvlar</h2>
-      <p class="page-subtitle">Klient tanlanadi, mahsulot turi ko`rsatiladi, balans va to`lov turi avtomatik ko`rinadi.</p>
+      <h2 class="page-title">{{ t('Sotuvlar') }}</h2>
+      <p class="page-subtitle">{{ t('Klient tanlanadi, mahsulot turi ko`rsatiladi, balans va to`lov turi avtomatik ko`rinadi.') }}</p>
       <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
     </div>
     <div class="flex flex-wrap gap-2">
       <ExportActions @excel="exportSalesExcel" @pdf="exportSalesPdf" />
-      <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Sotuv qo'shish</button>
+      <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">{{ t("Sotuv qo'shish") }}</button>
     </div>
   </section>
 
@@ -542,10 +550,10 @@ watch(
   <section class="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
     <article class="panel p-4">
       <div class="flex flex-wrap gap-2 border-b border-slate-100 pb-4">
-        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">Joriy oy</button>
-        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">Oxirgi 30 kun</button>
-        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">Oxirgi 7 kun</button>
-        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">Hammasi</button>
+        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">{{ t('Joriy oy') }}</button>
+        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">{{ t('Oxirgi 30 kun') }}</button>
+        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">{{ t('Oxirgi 7 kun') }}</button>
+        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">{{ t('Hammasi') }}</button>
       </div>
 
       <div class="mt-4 grid gap-3 md:grid-cols-6">
@@ -572,14 +580,14 @@ watch(
           ]"
           placeholder="Hammasi"
         />
-        <AppSelect v-model="filters.clientName" label="Klient" :options="filterClientOptions" placeholder="Hamma klient" />
+        <AppSelect v-model="filters.clientName" label="Klient" :options="filterClientOptions" :translate-options="false" placeholder="Hamma klient" />
       </div>
     </article>
 
     <article class="panel p-4">
-      <p class="text-sm font-semibold text-slate-900">Klient tanlash</p>
-      <p class="mt-1 text-xs text-slate-500">Yangi klientni avval `Klientlar` sahifasida qo`shing, keyin bu yerda tanlaysiz.</p>
-      <NuxtLink to="/users" class="btn-secondary mt-4 w-full">Klientlar sahifasi</NuxtLink>
+      <p class="text-sm font-semibold text-slate-900">{{ t('Klient tanlash') }}</p>
+      <p class="mt-1 text-xs text-slate-500">{{ t('Yangi klientni avval `Klientlar` sahifasida qo`shing, keyin bu yerda tanlaysiz.') }}</p>
+      <NuxtLink to="/users" class="btn-secondary mt-4 w-full">{{ t('Klientlar sahifasi') }}</NuxtLink>
       <div class="mt-4 flex flex-wrap gap-2">
         <span v-for="client in clientDirectory.slice(0, 8)" :key="client.id" class="data-chip">
           {{ client.clientName }}
@@ -622,8 +630,8 @@ watch(
         <div class="flex justify-end gap-2">
           <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openReceiptModal(row)">TG</button>
           <template v-if="isAdmin">
-            <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">Tahrirlash</button>
-            <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askDelete(row)">O'chirish</button>
+            <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">{{ t('Tahrirlash') }}</button>
+            <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askDelete(row)">{{ t("O'chirish") }}</button>
           </template>
         </div>
       </template>
@@ -634,12 +642,11 @@ watch(
     <div class="grid gap-4 md:grid-cols-2">
       <AppInput v-model="form.date" type="date" label="Sana" required />
       <AppInput v-model="form.time" type="time" label="Soat" />
-      <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" required />
 
       <div class="md:col-span-2 grid gap-3 md:grid-cols-[1fr_auto]">
-        <AppSelect v-model="form.clientName" label="Klient" :options="clientSelectOptions" placeholder="Klientni tanlang" required />
+        <AppSelect v-model="form.clientName" label="Klient" :options="clientSelectOptions" :translate-options="false" placeholder="Klientni tanlang" required />
         <div class="flex items-end">
-          <NuxtLink to="/users" class="btn-secondary w-full">Klient qo'shish</NuxtLink>
+          <NuxtLink to="/users" class="btn-secondary w-full">{{ t("Klient qo'shish") }}</NuxtLink>
         </div>
       </div>
 
@@ -792,9 +799,12 @@ watch(
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="modalOpen = false">Bekor qilish</button>
+        <p v-if="formError" class="mr-auto max-w-sm text-sm font-medium text-rose-700">
+          {{ formError }}
+        </p>
+        <button type="button" class="btn-secondary" @click="modalOpen = false">{{ t('Bekor qilish') }}</button>
         <button type="button" class="btn-primary" @click="saveSale">
-          {{ editingId ? 'Saqlash' : 'Qo`shish' }}
+          {{ editingId ? t('Saqlash') : t("Qo`shish") }}
         </button>
       </div>
     </template>

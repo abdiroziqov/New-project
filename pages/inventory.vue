@@ -9,6 +9,7 @@ definePageMeta({
 const { factoryOptions, buildSummary } = useFactoryAccounting()
 const { formatTons } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
+const { t } = useUiLocale()
 
 const filters = reactive({
   startDate: '',
@@ -40,19 +41,19 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
 <template>
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h2 class="page-title">Ostatka</h2>
+      <h2 class="page-title">{{ t('Ostatka') }}</h2>
       <p class="page-subtitle">
-        Qancha tosh, qoplik va rasipnoy qolganini shu yerda ko'rasiz. Manfiy chiqsa kamomad bor.
+        {{ t("Qancha tosh, qoplik va rasipnoy qolganini shu yerda ko'rasiz. Manfiy chiqsa kamomad bor.") }}
       </p>
     </div>
   </section>
 
   <section class="panel p-4">
     <div class="flex flex-wrap gap-2 border-b border-slate-100 pb-4">
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">Joriy oy</button>
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">Oxirgi 30 kun</button>
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">Oxirgi 7 kun</button>
-      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">Hammasi</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">{{ t('Joriy oy') }}</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">{{ t('Oxirgi 30 kun') }}</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">{{ t('Oxirgi 7 kun') }}</button>
+      <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">{{ t('Hammasi') }}</button>
     </div>
 
     <div class="mt-4 grid gap-3 md:grid-cols-4">
@@ -60,7 +61,7 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
       <AppInput v-model="filters.endDate" type="date" label="Tugash sanasi" />
       <AppSelect v-model="filters.factory" label="Zavod" :options="factoryOptions" placeholder="Hamma zavod" />
       <div class="flex items-end">
-        <button type="button" class="btn-secondary w-full" @click="clearFilters">Filtrni tozalash</button>
+        <button type="button" class="btn-secondary w-full" @click="clearFilters">{{ t('Filtrni tozalash') }}</button>
       </div>
     </div>
   </section>
@@ -86,8 +87,8 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
   <section class="grid gap-4 lg:grid-cols-3">
     <article class="panel p-5 lg:col-span-2">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">Zavodlar bo'yicha ostatka</h3>
-        <p class="text-xs text-slate-500">Har bir zavodda qolgan tosh va tayyor yuk ko'rinadi.</p>
+        <h3 class="text-base font-semibold text-slate-900">{{ t("Zavodlar bo'yicha ostatka") }}</h3>
+        <p class="text-xs text-slate-500">{{ t("Har bir zavodda qolgan tosh va tayyor yuk ko'rinadi.") }}</p>
       </header>
 
       <AppTable :columns="balanceColumns" :rows="balanceRows" empty-text="Tanlangan davrda ostatka ma'lumoti topilmadi.">
@@ -119,7 +120,7 @@ const balanceClass = (value: number) => (value < 0 ? 'text-rose-700' : 'text-eme
 
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">Qanday hisoblanadi</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t('Qanday hisoblanadi') }}</h3>
       </header>
 
       <div class="space-y-3 text-sm text-slate-600">

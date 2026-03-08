@@ -1,5 +1,6 @@
 export const useFormatting = () => {
-  const formatSom = (value: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(value))} som`
+  const { isCyrl, t } = useUiLocale()
+  const formatSom = (value: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(value))} ${isCyrl.value ? 'сўм' : 'som'}`
   const formatTons = (value: number) => `${new Intl.NumberFormat('uz-UZ').format(Number(value.toFixed(2)))} t`
   const monthNames = [
     'yanvar',
@@ -22,7 +23,7 @@ export const useFormatting = () => {
     }
 
     if (value instanceof Date) {
-      return `${value.getFullYear()} ${value.getDate()} ${monthNames[value.getMonth()]}`
+      return `${value.getFullYear()} ${value.getDate()} ${t(monthNames[value.getMonth()])}`
     }
 
     const matchedDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -32,7 +33,7 @@ export const useFormatting = () => {
     }
 
     const [, year, month, day] = matchedDate
-    return `${Number(year)} ${Number(day)} ${monthNames[Number(month) - 1]}`
+    return `${Number(year)} ${Number(day)} ${t(monthNames[Number(month) - 1])}`
   }
 
   return {

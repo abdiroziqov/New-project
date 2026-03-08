@@ -45,6 +45,7 @@ const {
 const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
+const { t } = useUiLocale()
 
 const manualDebtClientListId = 'manual-debt-client-list'
 
@@ -91,7 +92,7 @@ const telegramSuccess = ref('')
 const telegramSending = ref(false)
 
 const debtorColumns: TableColumn[] = [
-  { key: 'clientName', label: 'Klient' },
+  { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
   { key: 'phone', label: 'Telefon' },
   { key: 'totalTons', label: 'Tonna', align: 'right' },
   { key: 'totalRevenue', label: 'Jami yozuv', align: 'right' },
@@ -104,7 +105,7 @@ const debtorColumns: TableColumn[] = [
 const invoiceColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
   { key: 'entryTypeLabel', label: 'Turi' },
-  { key: 'clientName', label: 'Klient' },
+  { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
   { key: 'factory', label: 'Zavod' },
   { key: 'tons', label: 'Tonna', align: 'right' },
   { key: 'totalAmount', label: 'Jami', align: 'right' },
@@ -115,7 +116,7 @@ const invoiceColumns: TableColumn[] = [
 
 const paymentColumns: TableColumn[] = [
   { key: 'date', label: 'To`lov sanasi' },
-  { key: 'clientName', label: 'Klient' },
+  { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
   { key: 'factory', label: 'Zavod' },
   { key: 'amount', label: 'Summa', align: 'right' },
   { key: 'paymentMethod', label: 'To`lov turi' },
@@ -124,7 +125,7 @@ const paymentColumns: TableColumn[] = [
 ]
 
 const reminderColumns: TableColumn[] = [
-  { key: 'clientName', label: 'Klient' },
+  { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
   { key: 'phone', label: 'Telefon' },
   { key: 'debt', label: 'Qarz', align: 'right' },
   { key: 'frequencyLabel', label: 'Davriylik' },
@@ -545,9 +546,9 @@ const clearFilters = () => {
 
 <template>
   <section>
-    <h2 class="page-title">Qarzdorlar</h2>
+    <h2 class="page-title">{{ t('Qarzdorlar') }}</h2>
     <p class="page-subtitle">
-      Eski qarzlarni ham qo'lda qo'shish, keyin to'lov bilan yopish va Telegram eslatmalar shu yerda.
+      {{ t("Eski qarzlarni ham qo'lda qo'shish, keyin to'lov bilan yopish va Telegram eslatmalar shu yerda.") }}
     </p>
     <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
   </section>
@@ -563,13 +564,13 @@ const clearFilters = () => {
   <section class="panel p-4">
     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">Joriy oy</button>
-        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">Oxirgi 30 kun</button>
-        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">Oxirgi 7 kun</button>
-        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">Hammasi</button>
+        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setCurrentMonth(filters)">{{ t('Joriy oy') }}</button>
+        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 30)">{{ t('Oxirgi 30 kun') }}</button>
+        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="setRecentDays(filters, 7)">{{ t('Oxirgi 7 kun') }}</button>
+        <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">{{ t('Hammasi') }}</button>
       </div>
 
-      <button v-if="isAdmin" type="button" class="btn-primary" @click="openManualDebtModal">Qarz qo'shish</button>
+      <button v-if="isAdmin" type="button" class="btn-primary" @click="openManualDebtModal">{{ t("Qarz qo'shish") }}</button>
     </div>
 
     <div class="mt-4 grid gap-3 md:grid-cols-[1.2fr_1fr_1fr_auto]">
@@ -577,7 +578,7 @@ const clearFilters = () => {
       <AppInput v-model="filters.startDate" type="date" label="Boshlanish sanasi" />
       <AppInput v-model="filters.endDate" type="date" label="Tugash sanasi" />
       <div class="flex items-end">
-        <button type="button" class="btn-secondary" @click="clearFilters">Tozalash</button>
+        <button type="button" class="btn-secondary" @click="clearFilters">{{ t('Tozalash') }}</button>
       </div>
     </div>
   </section>
@@ -585,10 +586,14 @@ const clearFilters = () => {
   <section class="grid gap-4">
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">Klientlar bo'yicha qarz</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t("Klientlar bo'yicha qarz") }}</h3>
       </header>
 
       <AppTable :columns="debtorColumns" :rows="debtorRows" empty-text="Qarzdor klient topilmadi.">
+        <template #cell-clientName="{ value }">
+          <span class="font-bold text-brand-700">{{ value }}</span>
+        </template>
+
         <template #cell-totalTons="{ value }">
           <span v-if="Number(value) > 0">{{ formatTons(Number(value)) }}</span>
           <span v-else class="text-slate-400">-</span>
@@ -628,10 +633,14 @@ const clearFilters = () => {
 
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">Yozuvlar bo'yicha qarz</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t("Yozuvlar bo'yicha qarz") }}</h3>
       </header>
 
       <AppTable :columns="invoiceColumns" :rows="invoiceRows" empty-text="Ochiq qarz yozuvlari topilmadi.">
+        <template #cell-clientName="{ value }">
+          <span class="font-bold text-brand-700">{{ value }}</span>
+        </template>
+
         <template #cell-entryTypeLabel="{ value }">
           <span
             :class="[
@@ -676,11 +685,15 @@ const clearFilters = () => {
 
   <section class="panel p-5">
     <header class="mb-4">
-      <h3 class="text-base font-semibold text-slate-900">Aktiv Telegram eslatmalar</h3>
+      <h3 class="text-base font-semibold text-slate-900">{{ t('Aktiv Telegram eslatmalar') }}</h3>
       <p class="text-xs text-slate-500">Schedule saqlanadi. Bot token va klient chat id kiritilsa server o'zi yuboradi.</p>
     </header>
 
     <AppTable :columns="reminderColumns" :rows="reminderRows" empty-text="Aktiv eslatmalar yo'q.">
+      <template #cell-clientName="{ value }">
+        <span class="font-bold text-brand-700">{{ value }}</span>
+      </template>
+
       <template #cell-debt="{ value }">
         <span class="font-semibold text-rose-700">{{ formatSom(Number(value)) }}</span>
       </template>
@@ -703,11 +716,15 @@ const clearFilters = () => {
 
   <section class="panel p-5">
     <header class="mb-4">
-      <h3 class="text-base font-semibold text-slate-900">To'lovlar tarixi</h3>
+      <h3 class="text-base font-semibold text-slate-900">{{ t("To'lovlar tarixi") }}</h3>
       <p class="text-xs text-slate-500">Kim qachon pul berganini shu jadvaldan ko'rasiz.</p>
     </header>
 
     <AppTable :columns="paymentColumns" :rows="paymentRows" empty-text="To'lov tarixi topilmadi.">
+      <template #cell-clientName="{ value }">
+        <span class="font-bold text-brand-700">{{ value }}</span>
+      </template>
+
       <template #cell-amount="{ value }">
         <span class="font-semibold text-emerald-700">{{ formatSom(Number(value)) }}</span>
       </template>
@@ -737,8 +754,8 @@ const clearFilters = () => {
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="closeManualDebtModal">Bekor qilish</button>
-        <button v-if="isAdmin" type="button" class="btn-primary" @click="saveManualDebt">Saqlash</button>
+        <button type="button" class="btn-secondary" @click="closeManualDebtModal">{{ t('Bekor qilish') }}</button>
+        <button v-if="isAdmin" type="button" class="btn-primary" @click="saveManualDebt">{{ t('Saqlash') }}</button>
       </div>
     </template>
   </AppModal>
@@ -780,8 +797,8 @@ const clearFilters = () => {
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="closePaymentModal">Bekor qilish</button>
-        <button v-if="isAdmin" type="button" class="btn-primary" @click="savePayment">Saqlash</button>
+        <button type="button" class="btn-secondary" @click="closePaymentModal">{{ t('Bekor qilish') }}</button>
+        <button v-if="isAdmin" type="button" class="btn-primary" @click="savePayment">{{ t('Saqlash') }}</button>
       </div>
     </template>
   </AppModal>
@@ -831,8 +848,8 @@ const clearFilters = () => {
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="reminderModalOpen = false">Bekor qilish</button>
-        <button v-if="isAdmin" type="button" class="btn-primary" @click="saveReminder">Saqlash</button>
+        <button type="button" class="btn-secondary" @click="reminderModalOpen = false">{{ t('Bekor qilish') }}</button>
+        <button v-if="isAdmin" type="button" class="btn-primary" @click="saveReminder">{{ t('Saqlash') }}</button>
       </div>
     </template>
   </AppModal>

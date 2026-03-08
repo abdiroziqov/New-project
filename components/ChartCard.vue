@@ -12,6 +12,8 @@ const props = withDefaults(defineProps<Props>(), {
   subtitle: ''
 })
 
+const { t } = useUiLocale()
+
 const palette = ['#1f88ff', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 const normalizedPoints = computed(() =>
@@ -68,8 +70,8 @@ const pieBackground = computed(() => {
 <template>
   <article class="panel p-5">
     <header class="mb-4">
-      <h3 class="text-base font-semibold text-slate-900">{{ title }}</h3>
-      <p v-if="subtitle" class="text-xs text-slate-500">{{ subtitle }}</p>
+      <h3 class="text-base font-semibold text-slate-900">{{ t(title) }}</h3>
+      <p v-if="subtitle" class="text-xs text-slate-500">{{ t(subtitle) }}</p>
     </header>
 
     <div v-if="type === 'line'" class="space-y-3">
@@ -85,7 +87,7 @@ const pieBackground = computed(() => {
 
       <div class="flex flex-wrap gap-2 text-xs text-slate-500">
         <span v-for="point in normalizedPoints" :key="point.label" class="rounded bg-slate-100 px-2 py-1">
-          {{ point.label }}: {{ point.value }}
+          {{ t(point.label) }}: {{ point.value }}
         </span>
       </div>
     </div>
@@ -101,7 +103,7 @@ const pieBackground = computed(() => {
               backgroundColor: point.color
             }"
           />
-          <span class="text-[11px] text-slate-500">{{ point.label }}</span>
+          <span class="text-[11px] text-slate-500">{{ t(point.label) }}</span>
         </div>
       </div>
     </div>
@@ -116,7 +118,7 @@ const pieBackground = computed(() => {
         >
           <span class="inline-flex items-center gap-2 text-slate-700">
             <span class="h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: point.color }" />
-            {{ point.label }}
+            {{ t(point.label) }}
           </span>
           <span class="font-semibold text-slate-900">{{ point.value }}</span>
         </div>

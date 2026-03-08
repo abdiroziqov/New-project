@@ -39,6 +39,7 @@ const {
   getClientProfile
 } = useFactoryAccounting()
 const { formatSom, formatDate, formatTons } = useFormatting()
+const { t } = useUiLocale()
 
 const clientPaymentForm = reactive({
   date: latestDate.value,
@@ -250,11 +251,11 @@ watch(
 <template>
   <section class="flex flex-wrap items-start justify-between gap-3">
     <div>
-      <h2 class="page-title">Pul Kiritish</h2>
-      <p class="page-subtitle">Klientdan tushgan pul va qo'lda chiqim shu yerda yuritiladi. Bu bo'lim faqat admin uchun.</p>
+      <h2 class="page-title">{{ t('Pul Kiritish') }}</h2>
+      <p class="page-subtitle">{{ t("Klientdan tushgan pul va qo'lda chiqim shu yerda yuritiladi. Bu bo'lim faqat admin uchun.") }}</p>
     </div>
 
-    <NuxtLink to="/debtors" class="btn-secondary">Eski qarz qo'shish: Qarzdorlar</NuxtLink>
+    <NuxtLink to="/debtors" class="btn-secondary">{{ t("Eski qarz qo'shish: Qarzdorlar") }}</NuxtLink>
   </section>
 
   <p v-if="infoMessage" class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
@@ -280,17 +281,24 @@ watch(
   <section class="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">Klientdan pul tushdi</h3>
-        <p class="text-sm text-slate-500">Qaysi qarz yozuvi yopilayotganini tanlang. Sotuv ham, eski qarz ham shu yerdan yopiladi.</p>
+        <h3 class="text-base font-semibold text-slate-900">{{ t('Klientdan pul tushdi') }}</h3>
+        <p class="text-sm text-slate-500">{{ t("Qaysi qarz yozuvi yopilayotganini tanlang. Sotuv ham, eski qarz ham shu yerdan yopiladi.") }}</p>
       </header>
 
       <div class="grid gap-4 md:grid-cols-2">
         <AppInput v-model="clientPaymentForm.date" type="date" label="To'lov sanasi" />
-        <AppSelect v-model="clientPaymentForm.clientName" label="Klient" :options="clientOptions" placeholder="Klientni tanlang" />
+        <AppSelect
+          v-model="clientPaymentForm.clientName"
+          label="Klient"
+          :options="clientOptions"
+          :translate-options="false"
+          placeholder="Klientni tanlang"
+        />
         <AppSelect
           v-model="clientPaymentForm.saleId"
           label="Qarz yozuvi"
           :options="clientOutstandingSaleOptions"
+          :translate-options="false"
           placeholder="Qarz yozuvini tanlang"
         />
         <AppSelect
@@ -360,15 +368,15 @@ watch(
       </p>
 
       <div class="mt-4 flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="resetClientPaymentForm">Tozalash</button>
-        <button type="button" class="btn-primary" @click="saveClientPayment">Pulni kiritish</button>
+        <button type="button" class="btn-secondary" @click="resetClientPaymentForm">{{ t('Tozalash') }}</button>
+        <button type="button" class="btn-primary" @click="saveClientPayment">{{ t('Pulni kiritish') }}</button>
       </div>
     </article>
 
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">Qo'lda chiqim</h3>
-        <p class="text-sm text-slate-500">Naqd, Click yoki Prichesleniya bo'yicha chiqimni shu yerda kiritasiz.</p>
+        <h3 class="text-base font-semibold text-slate-900">{{ t("Qo'lda chiqim") }}</h3>
+        <p class="text-sm text-slate-500">{{ t("Naqd, Click yoki Prichesleniya bo'yicha chiqimni shu yerda kiritasiz.") }}</p>
       </header>
 
       <div class="space-y-4">
@@ -394,12 +402,12 @@ watch(
       </p>
 
       <div class="mt-4 flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="resetExpenseForm">Tozalash</button>
-        <button type="button" class="btn-primary" @click="saveExpense">Chiqimni kiritish</button>
+        <button type="button" class="btn-secondary" @click="resetExpenseForm">{{ t('Tozalash') }}</button>
+        <button type="button" class="btn-primary" @click="saveExpense">{{ t('Chiqimni kiritish') }}</button>
       </div>
 
       <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        Ta'minotchiga pul berilganda `Tosh Kirimi` sahifasidagi yozuvni tahrirlang. U yerda supplier qarzi va qoldiq avtomatik yangilanadi.
+        {{ t("Ta'minotchiga pul berilganda `Tosh Kirimi` sahifasidagi yozuvni tahrirlang. U yerda supplier qarzi va qoldiq avtomatik yangilanadi.") }}
       </div>
     </article>
   </section>

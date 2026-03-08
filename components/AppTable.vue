@@ -14,6 +14,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const { formatDate } = useFormatting()
+const { t } = useUiLocale()
 
 const cellAlignmentClass = (align: TableColumn['align']) => {
   if (align === 'center') {
@@ -27,7 +28,7 @@ const cellAlignmentClass = (align: TableColumn['align']) => {
   return 'text-left'
 }
 
-const isDateCell = (key: string, value: unknown) =>
+const isDateCell = (key: string, value: unknown): value is string =>
   typeof value === 'string' &&
   key.toLowerCase().includes('date') &&
   /^\d{4}-\d{2}-\d{2}/.test(value)
@@ -51,10 +52,11 @@ const getCellValue = (key: string, value: unknown) => {
             :key="column.key"
             :class="[
               'border-b border-slate-200 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500',
-              cellAlignmentClass(column.align)
+              cellAlignmentClass(column.align),
+              column.headerClass
             ]"
           >
-            {{ column.label }}
+            {{ t(column.label) }}
           </th>
         </tr>
       </thead>
@@ -62,7 +64,7 @@ const getCellValue = (key: string, value: unknown) => {
       <tbody>
         <tr v-if="!rows.length">
           <td :colspan="columns.length" class="px-4 py-8 text-center text-sm text-slate-500">
-            {{ emptyText }}
+            {{ t(emptyText) }}
           </td>
         </tr>
 
@@ -77,7 +79,8 @@ const getCellValue = (key: string, value: unknown) => {
             :key="column.key"
             :class="[
               'border-b border-slate-100 px-4 py-3 align-middle text-slate-700',
-              cellAlignmentClass(column.align)
+              cellAlignmentClass(column.align),
+              column.cellClass
             ]"
           >
             <slot :name="`cell-${column.key}`" :row="row" :value="row[column.key]">

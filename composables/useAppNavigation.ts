@@ -42,6 +42,7 @@ const titleMap = navigationItems.reduce<Record<string, string>>((map, item) => {
 
 export const useAppNavigation = () => {
   const { user } = useAuth()
+  const { t } = useUiLocale()
 
   const filteredNavigation = computed(() => {
     const currentRole = user.value?.role
@@ -50,13 +51,18 @@ export const useAppNavigation = () => {
       return []
     }
 
-    return navigationItems.filter((item) => item.roles.includes(currentRole))
+    return navigationItems
+      .filter((item) => item.roles.includes(currentRole))
+      .map((item) => ({
+        ...item,
+        label: t(item.label)
+      }))
   })
 
   const mainNavigation = computed(() => filteredNavigation.value.filter((item) => item.group === 'main'))
   const manualNavigation = computed(() => filteredNavigation.value.filter((item) => item.group === 'manual'))
 
-  const getPageTitle = (path: string) => titleMap[path] ?? 'Ming Bir Hazina'
+  const getPageTitle = (path: string) => t(titleMap[path] ?? 'Ming Bir Hazina')
 
   return {
     filteredNavigation,

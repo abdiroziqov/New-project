@@ -4,6 +4,7 @@ const runtimeConfig = useRuntimeConfig()
 const { user, logout } = useAuth()
 const { mainNavigation, manualNavigation, getPageTitle } = useAppNavigation()
 const { formatDate } = useFormatting()
+const { t, locale, setLocale, localeOptions } = useUiLocale()
 
 const emit = defineEmits<{
   toggleSidebar: []
@@ -48,13 +49,13 @@ const handleLogout = async () => {
           class="inline-flex rounded-lg border border-slate-300 p-2 text-slate-600 lg:hidden"
           @click="emit('toggleSidebar')"
         >
-          Menu
+          {{ t('Menu') }}
         </button>
         <div>
           <h1 class="text-lg font-bold text-slate-900">{{ pageTitle }}</h1>
           <p class="text-xs text-slate-500">
             <NuxtLink to="/" class="font-semibold text-slate-600 transition hover:text-brand-700">
-              {{ runtimeConfig.public.appName }}
+              {{ t(runtimeConfig.public.appName) }}
             </NuxtLink>
             · {{ today }}
           </p>
@@ -62,11 +63,25 @@ const handleLogout = async () => {
       </div>
 
       <div class="flex items-center gap-3">
+        <div class="hidden items-center rounded-lg bg-slate-100 p-1 sm:flex">
+          <button
+            v-for="item in localeOptions"
+            :key="item.value"
+            type="button"
+            :class="[
+              'rounded-md px-3 py-1.5 text-xs font-semibold transition',
+              locale === item.value ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+            ]"
+            @click="setLocale(item.value)"
+          >
+            {{ item.label }}
+          </button>
+        </div>
         <div class="hidden text-right sm:block">
           <p class="text-sm font-semibold text-slate-800">{{ user?.name }}</p>
-          <p class="text-xs uppercase tracking-wide text-slate-500">{{ user?.role }}</p>
+          <p class="text-xs uppercase tracking-wide text-slate-500">{{ t(String(user?.role ?? '-')) }}</p>
         </div>
-        <button type="button" class="btn-secondary" @click="handleLogout">Chiqish</button>
+        <button type="button" class="btn-secondary" @click="handleLogout">{{ t('Chiqish') }}</button>
       </div>
     </div>
 
@@ -86,7 +101,7 @@ const handleLogout = async () => {
       </div>
 
       <div v-if="manualNavigation.length" class="mt-3">
-        <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Qo'lda kiritish</p>
+        <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{{ t("Qo'lda kiritish") }}</p>
         <div class="flex gap-2 overflow-x-auto pb-1">
           <NuxtLink
             v-for="item in manualNavigation"

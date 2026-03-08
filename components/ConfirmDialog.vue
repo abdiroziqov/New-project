@@ -15,6 +15,8 @@ withDefaults(defineProps<Props>(), {
   loading: false
 })
 
+const { t } = useUiLocale()
+
 const emit = defineEmits<{
   confirm: []
   cancel: []
@@ -23,15 +25,15 @@ const emit = defineEmits<{
 
 <template>
   <AppModal :open="open" :title="title" size="sm" @close="emit('cancel')">
-    <p class="text-sm text-slate-600">{{ message }}</p>
+    <p class="text-sm text-slate-600">{{ t(message) }}</p>
 
     <template #footer>
       <div class="flex justify-end gap-2">
         <button type="button" class="btn-secondary" @click="emit('cancel')">
-          {{ cancelText }}
+          {{ t(cancelText) }}
         </button>
         <button type="button" class="btn-danger" :disabled="loading" @click="emit('confirm')">
-          {{ confirmText }}
+          {{ t(confirmText) }}
         </button>
       </div>
     </template>

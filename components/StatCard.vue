@@ -13,6 +13,8 @@ const props = withDefaults(defineProps<Props>(), {
   trendType: 'neutral'
 })
 
+const { t } = useUiLocale()
+
 const trendClass = computed(() => {
   if (props.trendType === 'up') {
     return 'text-emerald-600'
@@ -30,9 +32,9 @@ const trendClass = computed(() => {
   <article class="panel p-5">
     <div class="flex items-start justify-between gap-3">
       <div>
-        <p class="text-sm font-medium text-slate-500">{{ title }}</p>
+        <p class="text-sm font-medium text-slate-500">{{ t(title) }}</p>
         <h3 class="mt-1 text-2xl font-bold text-slate-900">{{ value }}</h3>
-        <p v-if="subtitle" class="mt-1 text-xs text-slate-500">{{ subtitle }}</p>
+        <p v-if="subtitle" class="mt-1 text-xs text-slate-500">{{ t(subtitle) }}</p>
       </div>
       <div class="rounded-lg bg-brand-50 px-2 py-1 text-brand-700">
         <slot name="icon">*</slot>
@@ -40,7 +42,7 @@ const trendClass = computed(() => {
     </div>
 
     <p v-if="trend" :class="['mt-4 text-xs font-semibold', trendClass]">
-      {{ trend }}
+      {{ t(trend) }}
     </p>
   </article>
 </template>

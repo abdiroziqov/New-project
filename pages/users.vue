@@ -11,6 +11,7 @@ const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { downloadWorkbook } = useExcelExport()
 const { printWorkbook } = usePdfExport()
+const { t } = useUiLocale()
 
 const filters = reactive({
   search: ''
@@ -35,7 +36,7 @@ const form = reactive({
 })
 
 const columns: TableColumn[] = [
-  { key: 'clientName', label: 'Klient' },
+  { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
   { key: 'phone', label: 'Telefon' },
   { key: 'telegram', label: 'Telegram' },
   { key: 'balanceType', label: 'Balans turi' },
@@ -356,13 +357,13 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
 <template>
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h2 class="page-title">Klientlar</h2>
-      <p class="page-subtitle">Klientni shu yerda qo`shasiz. Keyin `Sotuvlar` sahifasida tanlaysiz va balansi ko`rinadi.</p>
+      <h2 class="page-title">{{ t('Klientlar') }}</h2>
+      <p class="page-subtitle">{{ t('Klientni shu yerda qo`shasiz. Keyin `Sotuvlar` sahifasida tanlaysiz va balansi ko`rinadi.') }}</p>
       <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
     </div>
     <div class="flex flex-wrap gap-2">
       <ExportActions @excel="exportClientsExcel" @pdf="exportClientsPdf" />
-      <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">Klient qo'shish</button>
+      <button v-if="isAdmin" type="button" class="btn-primary" @click="openCreateModal">{{ t("Klient qo'shish") }}</button>
     </div>
   </section>
 
@@ -378,7 +379,7 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
     <div class="grid gap-3 md:grid-cols-[1fr_auto]">
       <AppInput v-model="filters.search" label="Klient qidirish" placeholder="Masalan, Begzod" />
       <div class="flex items-end">
-        <button type="button" class="btn-secondary" @click="filters.search = ''">Tozalash</button>
+        <button type="button" class="btn-secondary" @click="filters.search = ''">{{ t('Tozalash') }}</button>
       </div>
     </div>
   </section>
@@ -386,12 +387,12 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
   <section class="grid gap-4 ">
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">Klientlar ro'yxati</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t("Klientlar ro'yxati") }}</h3>
       </header>
 
       <AppTable :columns="columns" :rows="clientRows" empty-text="Klientlar topilmadi.">
         <template #cell-clientName="{ value }">
-          <span class="font-semibold text-slate-900">{{ value }}</span>
+          <span class="font-bold text-brand-700">{{ value }}</span>
         </template>
 
         <template #cell-balanceType="{ value }">
@@ -402,7 +403,7 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
           <span v-if="row.telegramChatId" class="text-xs font-semibold text-sky-700">
             {{ row.telegramUsername ? `@${row.telegramUsername}` : row.telegramChatId }}
           </span>
-          <span v-else class="text-xs text-slate-400">Ulanmagan</span>
+          <span v-else class="text-xs text-slate-400">{{ t('Ulanmagan') }}</span>
         </template>
 
         <template #cell-balanceAmount="{ row, value }">
@@ -424,8 +425,8 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
         <template #cell-actions="{ row }">
           <div class="flex justify-end gap-2">
             <template v-if="isAdmin">
-              <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">Tahrirlash</button>
-              <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askDelete(row)">O'chirish</button>
+              <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">{{ t('Tahrirlash') }}</button>
+              <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askDelete(row)">{{ t("O'chirish") }}</button>
             </template>
             <span v-else class="text-xs text-slate-400">Faqat admin</span>
           </div>
@@ -435,7 +436,7 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
 
     <article class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">Oxirgi sotuvlar</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t('Oxirgi sotuvlar') }}</h3>
       </header>
 
       <AppTable :columns="salesColumns" :rows="saleRows" empty-text="Bu klient bo'yicha sotuv topilmadi.">
@@ -464,7 +465,7 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
         <AppInput v-model="form.telegramChatId" label="Telegram chat ID" placeholder="Masalan, 123456789" />
         <div class="flex items-end">
           <button type="button" class="btn-secondary w-full" @click="loadTelegramChats">
-            {{ telegramLookupLoading ? 'Yuklanmoqda...' : 'Telegramdan olish' }}
+            {{ telegramLookupLoading ? t('Yuklanmoqda...') : t('Telegramdan olish') }}
           </button>
         </div>
       </div>
@@ -494,7 +495,7 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
               <p class="mt-1 text-xs text-slate-500">{{ chat.chatId }}</p>
               <p v-if="chat.lastText" class="mt-1 text-xs text-slate-400">{{ chat.lastText }}</p>
             </div>
-            <span class="text-xs font-semibold text-brand-700">Tanlash</span>
+            <span class="text-xs font-semibold text-brand-700">{{ t('Tanlash') }}</span>
           </button>
         </div>
       </div>
@@ -510,8 +511,8 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <button type="button" class="btn-secondary" @click="modalOpen = false">Bekor qilish</button>
-        <button type="button" class="btn-primary" @click="saveClient">Saqlash</button>
+        <button type="button" class="btn-secondary" @click="modalOpen = false">{{ t('Bekor qilish') }}</button>
+        <button type="button" class="btn-primary" @click="saveClient">{{ t('Saqlash') }}</button>
       </div>
     </template>
   </AppModal>
