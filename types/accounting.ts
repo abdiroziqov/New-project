@@ -19,6 +19,8 @@ export type PaymentMethod = 'Naqd' | 'Click' | 'Prichesleniya'
 export type ReminderFrequency = 'daily' | 'every_2_days'
 export type MonthlyArchiveSection = 'income' | 'expense' | 'note'
 export type ArchiveFactoryScope = FactoryName | 'combined'
+export type ScaleDirection = 'kirim' | 'chiqim' | 'unknown'
+export type ScaleCashType = 'kirim' | 'chiqim'
 
 export interface CostProfile {
   sandPricePerTon: number
@@ -168,6 +170,45 @@ export interface SupplierSummary {
   lastFactory: FactoryName
 }
 
+export interface ScaleEntry {
+  id: string
+  telegramUpdateId: number
+  date: string
+  time: string
+  direction: ScaleDirection
+  tons: number
+  netKg: number
+  grossKg: number
+  tareKg: number
+  vehicleNumber: string
+  material: string
+  partnerName: string
+  driverName: string
+  rawText: string
+  sourceChatId: string
+  notes: string
+  createdAt: string
+}
+
+export interface ScaleSyncMeta {
+  lastSyncAt: string
+  lastSyncedCount: number
+  lastUpdateId: number
+}
+
+export interface ScaleCashEntry {
+  id: string
+  date: string
+  type: ScaleCashType
+  amount: number
+  paymentMethod: PaymentMethod
+  description: string
+  notes: string
+  source: 'manual' | 'telegram'
+  telegramUpdateId: number
+  createdAt: string
+}
+
 export interface ClientReminderSetting {
   id: string
   clientName: string
@@ -217,6 +258,9 @@ export interface AccountingStateSnapshot {
   defaultCosts: CostProfile
   dailyRecords: DailyFactoryRecord[]
   incomingLoads: IncomingLoadRecord[]
+  scaleEntries: ScaleEntry[]
+  scaleSyncMeta: ScaleSyncMeta
+  scaleCashEntries: ScaleCashEntry[]
   sales: SaleRecord[]
   manualDebts: ManualDebtRecord[]
   payments: PaymentRecord[]

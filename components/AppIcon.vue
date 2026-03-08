@@ -1,6 +1,7 @@
 <script setup lang="ts">
 type IconName =
   | 'dashboard'
+  | 'scale'
   | 'quick-entry'
   | 'manual-entry'
   | 'production'
@@ -35,6 +36,23 @@ defineProps<Props>()
     <rect x="13" y="3" width="8" height="5" rx="2" />
     <rect x="13" y="10" width="8" height="11" rx="2" />
     <rect x="3" y="13" width="8" height="8" rx="2" />
+  </svg>
+
+  <svg
+    v-else-if="name === 'scale'"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M5 7h14" />
+    <path d="M7 7v10a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7" />
+    <path d="M12 11v4" />
+    <path d="M9.5 13.5 12 11l2.5 2.5" />
+    <path d="M4 19h16" />
   </svg>
 
   <svg

@@ -23,6 +23,11 @@ import type {
   PaymentStatus,
   ProductType,
   ReminderFrequency,
+  ScaleCashEntry,
+  ScaleCashType,
+  ScaleDirection,
+  ScaleEntry,
+  ScaleSyncMeta,
   SaleRecord,
   ShipmentType,
   VehicleType
@@ -35,6 +40,8 @@ import manualDebtsSource from '~/data/mock/manual-debts.json'
 import monthlyArchiveSource from '~/data/mock/monthly-archive-records.json'
 import paymentsSource from '~/data/mock/client-payments.json'
 import salesSource from '~/data/mock/customer-sales.json'
+import scaleCashEntriesSource from '~/data/mock/scale-cash-entries.json'
+import scaleEntriesSource from '~/data/mock/scale-entries.json'
 import { normalizeBulkOutputTons, normalizeShipmentTypeForProduct } from '~/composables/useProductRules'
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
@@ -43,11 +50,23 @@ const factories: FactoryName[] = ['Oybek', 'Jamshid']
 const productTypes: ProductType[] = ['Qum', 'Mel']
 const vehicleTypes: VehicleType[] = ['Howo', 'Kamaz']
 const shipmentTypes: ShipmentType[] = ['qoplik', 'rasipnoy']
-const expenseCategories: ExpenseCategory[] = ['Ishchi', 'Ovqat', 'Svet', 'Bozorlik', 'Yuklash', 'Boshqa']
+const expenseCategories: ExpenseCategory[] = [
+  'Ishchi',
+  'Ovqat',
+  'Svet',
+  'Bozorlik',
+  'Yuklash',
+  'Sementovoz kredit',
+  'Panel kredit',
+  'Kobalt kredit',
+  'Boshqa'
+]
 const paymentMethods: PaymentMethod[] = ['Naqd', 'Click', 'Prichesleniya']
 const reminderFrequencies: ReminderFrequency[] = ['daily', 'every_2_days']
 const archiveFactoryScopes: ArchiveFactoryScope[] = ['Oybek', 'Jamshid', 'combined']
 const monthlyArchiveSections: MonthlyArchiveSection[] = ['income', 'expense', 'note']
+const scaleDirections: ScaleDirection[] = ['kirim', 'chiqim', 'unknown']
+const scaleCashTypes: ScaleCashType[] = ['kirim', 'chiqim']
 
 const defaultCostProfile: CostProfile = {
   sandPricePerTon: 240,
@@ -85,6 +104,10 @@ const isArchiveFactoryScope = (value: unknown): value is ArchiveFactoryScope =>
   typeof value === 'string' && archiveFactoryScopes.includes(value as ArchiveFactoryScope)
 const isMonthlyArchiveSection = (value: unknown): value is MonthlyArchiveSection =>
   typeof value === 'string' && monthlyArchiveSections.includes(value as MonthlyArchiveSection)
+const isScaleDirection = (value: unknown): value is ScaleDirection =>
+  typeof value === 'string' && scaleDirections.includes(value as ScaleDirection)
+const isScaleCashType = (value: unknown): value is ScaleCashType =>
+  typeof value === 'string' && scaleCashTypes.includes(value as ScaleCashType)
 const asNumber = (value: unknown, fallback = 0) => {
   const normalized = Number(value)
   return Number.isFinite(normalized) ? normalized : fallback
@@ -345,10 +368,64 @@ const normalizeMonthlyArchiveRecord = (record: unknown): MonthlyArchiveRecord =>
   }
 }
 
+const normalizeScaleEntry = (record: unknown): ScaleEntry => {
+  const source = typeof record === 'object' && record ? (record as Partial<ScaleEntry>) : {}
+
+  return {
+    id: asString(source.id, createId('scale')),
+    telegramUpdateId: asNumber(source.telegramUpdateId),
+    date: asString(source.date, todayIso()),
+    time: asString(source.time),
+    direction: isScaleDirection(source.direction) ? source.direction : 'unknown',
+    tons: asNumber(source.tons),
+    netKg: asNumber(source.netKg),
+    grossKg: asNumber(source.grossKg),
+    tareKg: asNumber(source.tareKg),
+    vehicleNumber: asString(source.vehicleNumber),
+    material: asString(source.material),
+    partnerName: asString(source.partnerName),
+    driverName: asString(source.driverName),
+    rawText: asString(source.rawText),
+    sourceChatId: asString(source.sourceChatId),
+    notes: asString(source.notes),
+    createdAt: asString(source.createdAt, new Date().toISOString())
+  }
+}
+
+const normalizeScaleSyncMeta = (value: unknown): ScaleSyncMeta => {
+  const source = typeof value === 'object' && value ? (value as Partial<ScaleSyncMeta>) : {}
+
+  return {
+    lastSyncAt: asString(source.lastSyncAt),
+    lastSyncedCount: asNumber(source.lastSyncedCount),
+    lastUpdateId: asNumber(source.lastUpdateId)
+  }
+}
+
+const normalizeScaleCashEntry = (record: unknown): ScaleCashEntry => {
+  const source = typeof record === 'object' && record ? (record as Partial<ScaleCashEntry>) : {}
+
+  return {
+    id: asString(source.id, createId('scale-cash')),
+    date: asString(source.date, todayIso()),
+    type: isScaleCashType(source.type) ? source.type : 'kirim',
+    amount: asNumber(source.amount),
+    paymentMethod: isPaymentMethod(source.paymentMethod) ? source.paymentMethod : 'Naqd',
+    description: asString(source.description),
+    notes: asString(source.notes),
+    source: source.source === 'telegram' ? 'telegram' : 'manual',
+    telegramUpdateId: asNumber(source.telegramUpdateId),
+    createdAt: asString(source.createdAt, new Date().toISOString())
+  }
+}
+
 const buildSeedState = (): AccountingStateSnapshot => ({
   defaultCosts: clone(defaultCostProfile),
   dailyRecords: (dailySource as unknown[]).map((record) => normalizeDailyRecord(record, defaultCostProfile)),
   incomingLoads: (loadsSource as unknown[]).map((record) => normalizeIncomingLoad(record)),
+  scaleEntries: (scaleEntriesSource as unknown[]).map((record) => normalizeScaleEntry(record)),
+  scaleSyncMeta: normalizeScaleSyncMeta({}),
+  scaleCashEntries: (scaleCashEntriesSource as unknown[]).map((record) => normalizeScaleCashEntry(record)),
   sales: (salesSource as unknown[]).map((record) => normalizeSaleRecord(record)),
   manualDebts: (manualDebtsSource as unknown[]).map((record) => normalizeManualDebtRecord(record)),
   payments: (paymentsSource as unknown[]).map((record) => normalizePaymentRecord(record)),
@@ -370,6 +447,11 @@ export const normalizeAccountingState = (snapshot: unknown): AccountingStateSnap
       : [],
     incomingLoads: Array.isArray(source.incomingLoads)
       ? source.incomingLoads.map((record) => normalizeIncomingLoad(record))
+      : [],
+    scaleEntries: Array.isArray(source.scaleEntries) ? source.scaleEntries.map((record) => normalizeScaleEntry(record)) : [],
+    scaleSyncMeta: normalizeScaleSyncMeta(source.scaleSyncMeta),
+    scaleCashEntries: Array.isArray(source.scaleCashEntries)
+      ? source.scaleCashEntries.map((record) => normalizeScaleCashEntry(record))
       : [],
     sales: Array.isArray(source.sales) ? source.sales.map((record) => normalizeSaleRecord(record)) : [],
     manualDebts: Array.isArray(source.manualDebts) ? source.manualDebts.map((record) => normalizeManualDebtRecord(record)) : [],

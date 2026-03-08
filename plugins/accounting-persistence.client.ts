@@ -3,7 +3,21 @@ import type { AccountingStateSnapshot } from '~/types/accounting'
 
 export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.hook('app:mounted', () => {
-    const { defaultCosts, dailyRecords, incomingLoads, payments, sales, manualDebts, expenses, contacts, reminders, monthlyArchiveRecords } =
+    const {
+      defaultCosts,
+      dailyRecords,
+      incomingLoads,
+      scaleEntries,
+      scaleSyncMeta,
+      scaleCashEntries,
+      payments,
+      sales,
+      manualDebts,
+      expenses,
+      contacts,
+      reminders,
+      monthlyArchiveRecords
+    } =
       useFactoryAccounting()
     const { isAdmin } = useAuth()
     const storagePrefix = 'ming-bir-hazina:'
@@ -15,6 +29,9 @@ export default defineNuxtPlugin((nuxtApp) => {
       defaultCosts: defaultCosts.value,
       dailyRecords: dailyRecords.value,
       incomingLoads: incomingLoads.value,
+      scaleEntries: scaleEntries.value,
+      scaleSyncMeta: scaleSyncMeta.value,
+      scaleCashEntries: scaleCashEntries.value,
       sales: sales.value,
       manualDebts: manualDebts.value,
       payments: payments.value,
@@ -29,6 +46,9 @@ export default defineNuxtPlugin((nuxtApp) => {
       defaultCosts.value = snapshot.defaultCosts
       dailyRecords.value = snapshot.dailyRecords
       incomingLoads.value = snapshot.incomingLoads
+      scaleEntries.value = snapshot.scaleEntries
+      scaleSyncMeta.value = snapshot.scaleSyncMeta
+      scaleCashEntries.value = snapshot.scaleCashEntries
       sales.value = snapshot.sales
       manualDebts.value = snapshot.manualDebts
       payments.value = snapshot.payments
@@ -43,6 +63,8 @@ export default defineNuxtPlugin((nuxtApp) => {
       Boolean(
         snapshot.dailyRecords.length ||
           snapshot.incomingLoads.length ||
+          snapshot.scaleEntries.length ||
+          snapshot.scaleCashEntries.length ||
           snapshot.sales.length ||
           snapshot.manualDebts.length ||
           snapshot.payments.length ||
@@ -58,6 +80,9 @@ export default defineNuxtPlugin((nuxtApp) => {
           defaultCosts: JSON.parse(window.localStorage.getItem(`${storagePrefix}default-costs`) || 'null'),
           dailyRecords: JSON.parse(window.localStorage.getItem(`${storagePrefix}daily-records`) || '[]'),
           incomingLoads: JSON.parse(window.localStorage.getItem(`${storagePrefix}incoming-loads`) || '[]'),
+          scaleEntries: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-entries`) || '[]'),
+          scaleSyncMeta: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-sync-meta`) || 'null'),
+          scaleCashEntries: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-cash-entries`) || '[]'),
           sales: JSON.parse(window.localStorage.getItem(`${storagePrefix}sales`) || '[]'),
           manualDebts: JSON.parse(window.localStorage.getItem(`${storagePrefix}manual-debts`) || '[]'),
           payments: JSON.parse(window.localStorage.getItem(`${storagePrefix}payments`) || '[]'),
@@ -132,7 +157,21 @@ export default defineNuxtPlugin((nuxtApp) => {
         syncReady = true
 
         watch(
-          [defaultCosts, dailyRecords, incomingLoads, sales, manualDebts, payments, expenses, contacts, reminders, monthlyArchiveRecords],
+          [
+            defaultCosts,
+            dailyRecords,
+            incomingLoads,
+            scaleEntries,
+            scaleSyncMeta,
+            scaleCashEntries,
+            sales,
+            manualDebts,
+            payments,
+            expenses,
+            contacts,
+            reminders,
+            monthlyArchiveRecords
+          ],
           scheduleSave,
           { deep: true }
         )

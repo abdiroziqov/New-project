@@ -6,6 +6,8 @@ import manualDebtsSource from '~/data/mock/manual-debts.json'
 import monthlyArchiveSource from '~/data/mock/monthly-archive-records.json'
 import paymentsSource from '~/data/mock/client-payments.json'
 import salesSource from '~/data/mock/customer-sales.json'
+import scaleCashEntriesSource from '~/data/mock/scale-cash-entries.json'
+import scaleEntriesSource from '~/data/mock/scale-entries.json'
 import type {
   ArchiveFactoryScope,
   ClientReminderSetting,
@@ -28,6 +30,11 @@ import type {
   PaymentStatus,
   ProductType,
   ReminderFrequency,
+  ScaleCashEntry,
+  ScaleCashType,
+  ScaleDirection,
+  ScaleEntry,
+  ScaleSyncMeta,
   SaleRecord,
   ShipmentType,
   SupplierSummary,
@@ -68,6 +75,8 @@ const seedPayments = paymentsSource as PaymentRecord[]
 const seedSales = salesSource as SaleRecord[]
 const seedExpenses = expensesSource as OperationalExpense[]
 const seedMonthlyArchiveRecords = monthlyArchiveSource as MonthlyArchiveRecord[]
+const seedScaleCashEntries = scaleCashEntriesSource as ScaleCashEntry[]
+const seedScaleEntries = scaleEntriesSource as ScaleEntry[]
 
 export const factories: FactoryName[] = ['Oybek', 'Jamshid']
 const workerPayoutModeByFactory: Record<FactoryName, 'daily' | 'monthly'> = {
@@ -92,6 +101,8 @@ export const paymentMethods: PaymentMethod[] = ['Naqd', 'Click', 'Prichesleniya'
 export const reminderFrequencies: ReminderFrequency[] = ['daily', 'every_2_days']
 export const archiveFactoryScopes: ArchiveFactoryScope[] = ['Oybek', 'Jamshid', 'combined']
 export const monthlyArchiveSections: MonthlyArchiveSection[] = ['income', 'expense', 'note']
+export const scaleDirections: ScaleDirection[] = ['kirim', 'chiqim', 'unknown']
+export const scaleCashTypes: ScaleCashType[] = ['kirim', 'chiqim']
 
 export const defaultCostProfile: CostProfile = {
   sandPricePerTon: 240,
@@ -381,6 +392,45 @@ const normalizeReminderRecord = (record: Partial<ClientReminderSetting>): Client
   lastSentAt: record.lastSentAt ?? ''
 })
 
+const normalizeScaleEntryRecord = (record: Partial<ScaleEntry>): ScaleEntry => ({
+  id: record.id ?? createId('scale'),
+  telegramUpdateId: Number(record.telegramUpdateId ?? 0),
+  date: record.date ?? new Date().toISOString().slice(0, 10),
+  time: normalizeTime(record.time),
+  direction: scaleDirections.includes(record.direction as ScaleDirection) ? (record.direction as ScaleDirection) : 'unknown',
+  tons: Number(Math.max(record.tons ?? 0, 0).toFixed(2)),
+  netKg: Number(Math.max(record.netKg ?? 0, 0).toFixed(2)),
+  grossKg: Number(Math.max(record.grossKg ?? 0, 0).toFixed(2)),
+  tareKg: Number(Math.max(record.tareKg ?? 0, 0).toFixed(2)),
+  vehicleNumber: record.vehicleNumber?.trim() ?? '',
+  material: record.material?.trim() ?? '',
+  partnerName: record.partnerName?.trim() ?? '',
+  driverName: record.driverName?.trim() ?? '',
+  rawText: record.rawText?.trim() ?? '',
+  sourceChatId: record.sourceChatId?.trim() ?? '',
+  notes: record.notes?.trim() ?? '',
+  createdAt: record.createdAt ?? new Date().toISOString()
+})
+
+const normalizeScaleSyncMeta = (value?: Partial<ScaleSyncMeta>): ScaleSyncMeta => ({
+  lastSyncAt: value?.lastSyncAt ?? '',
+  lastSyncedCount: Number(value?.lastSyncedCount ?? 0),
+  lastUpdateId: Number(value?.lastUpdateId ?? 0)
+})
+
+const normalizeScaleCashEntryRecord = (record: Partial<ScaleCashEntry>): ScaleCashEntry => ({
+  id: record.id ?? createId('scale-cash'),
+  date: record.date ?? new Date().toISOString().slice(0, 10),
+  type: scaleCashTypes.includes(record.type as ScaleCashType) ? (record.type as ScaleCashType) : 'kirim',
+  amount: Number(Math.max(record.amount ?? 0, 0).toFixed(2)),
+  paymentMethod: record.paymentMethod ?? 'Naqd',
+  description: record.description?.trim() ?? '',
+  notes: record.notes?.trim() ?? '',
+  source: record.source === 'telegram' ? 'telegram' : 'manual',
+  telegramUpdateId: Number(record.telegramUpdateId ?? 0),
+  createdAt: record.createdAt ?? new Date().toISOString()
+})
+
 const normalizeManualDebtRecord = (record: Partial<ManualDebtRecord>): ManualDebtRecord => {
   const amount = Number(record.amount ?? 0)
   const paidAmount = Number(record.paidAmount ?? 0)
@@ -450,6 +500,18 @@ export const useFactoryAccounting = () => {
   const incomingLoads = useState<IncomingLoadRecord[]>(
     'accounting:incoming-loads',
     () => clone(seedIncomingLoads).map((record) => normalizeIncomingLoadRecord(record, Number(record.pricePerTon ?? 0), record.paidAmount))
+  )
+  const scaleEntries = useState<ScaleEntry[]>(
+    'accounting:scale-entries',
+    () => clone(seedScaleEntries).map((record) => normalizeScaleEntryRecord(record))
+  )
+  const scaleSyncMeta = useState<ScaleSyncMeta>(
+    'accounting:scale-sync-meta',
+    () => normalizeScaleSyncMeta()
+  )
+  const scaleCashEntries = useState<ScaleCashEntry[]>(
+    'accounting:scale-cash-entries',
+    () => clone(seedScaleCashEntries).map((record) => normalizeScaleCashEntryRecord(record))
   )
   const sales = useState<SaleRecord[]>(
     'accounting:sales',
@@ -1211,6 +1273,49 @@ export const useFactoryAccounting = () => {
     incomingLoads.value = incomingLoads.value.filter((record) => record.id !== id)
   }
 
+  const replaceScaleState = (entries: ScaleEntry[], syncMeta: ScaleSyncMeta) => {
+    scaleEntries.value = entries.map((record) => normalizeScaleEntryRecord(record)).sort((left, right) => {
+      const rightKey = `${right.date} ${right.time}`
+      const leftKey = `${left.date} ${left.time}`
+      return rightKey.localeCompare(leftKey)
+    })
+    scaleSyncMeta.value = normalizeScaleSyncMeta(syncMeta)
+  }
+
+  const addScaleCashEntry = (payload: Omit<ScaleCashEntry, 'id' | 'createdAt'>) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    scaleCashEntries.value.unshift(
+      normalizeScaleCashEntryRecord({
+        id: createId('scale-cash'),
+        ...payload,
+        createdAt: new Date().toISOString()
+      })
+    )
+  }
+
+  const updateScaleCashEntry = (payload: ScaleCashEntry) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const index = scaleCashEntries.value.findIndex((record) => record.id === payload.id)
+
+    if (index !== -1) {
+      scaleCashEntries.value[index] = normalizeScaleCashEntryRecord(payload)
+    }
+  }
+
+  const removeScaleCashEntry = (id: string) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    scaleCashEntries.value = scaleCashEntries.value.filter((record) => record.id !== id)
+  }
+
   const addSale = (
     payload: Omit<SaleRecord, 'id' | 'totalAmount' | 'remainingAmount' | 'advanceAmount' | 'balanceAmount' | 'balanceType' | 'paymentStatus'>
   ) => {
@@ -1774,6 +1879,9 @@ export const useFactoryAccounting = () => {
     defaultCosts,
     dailyRecords,
     incomingLoads,
+    scaleEntries,
+    scaleSyncMeta,
+    scaleCashEntries,
     payments,
     sales,
     manualDebts,
@@ -1817,6 +1925,10 @@ export const useFactoryAccounting = () => {
     addIncomingLoad,
     updateIncomingLoad,
     removeIncomingLoad,
+    replaceScaleState,
+    addScaleCashEntry,
+    updateScaleCashEntry,
+    removeScaleCashEntry,
     addSale,
     updateSale,
     removeSale,

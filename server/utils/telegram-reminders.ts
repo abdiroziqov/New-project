@@ -20,6 +20,7 @@ const formatUzDate = (value: string) => {
 const formatSom = (value: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(value))} som`
 
 const getTelegramBotToken = () => process.env.TELEGRAM_BOT_TOKEN?.trim() ?? ''
+const normalizeTelegramUsername = (value: string) => value.trim().replace(/^@/, '').toLowerCase()
 
 const getZonedParts = (date: Date, timeZone = reminderTimeZone) => {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -201,6 +202,103 @@ export const sendTelegramMessage = async (chatId: string, message: string) => {
   }
 
   return payload
+}
+
+export const getTelegramChats = async () => {
+  const botToken = getTelegramBotToken()
+
+  if (!botToken) {
+    throw new Error('TELEGRAM_BOT_TOKEN o`rnatilmagan.')
+  }
+
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates?limit=100`)
+  const payload = (await response.json()) as {
+    ok?: boolean
+    description?: string
+    result?: Array<{
+      message?: {
+        date?: number
+        text?: string
+        chat?: {
+          id: number
+          username?: string
+          first_name?: string
+          last_name?: string
+        }
+      }
+      edited_message?: {
+        date?: number
+        text?: string
+        chat?: {
+          id: number
+          username?: string
+          first_name?: string
+          last_name?: string
+        }
+      }
+    }>
+  }
+
+  if (!response.ok || payload.ok === false) {
+    throw new Error(payload.description || 'Telegram update olishda xato.')
+  }
+
+  const chats = new Map<
+    string,
+    {
+      chatId: string
+      username: string
+      fullName: string
+      updatedAtUnix: number
+    }
+  >()
+
+  for (const update of payload.result ?? []) {
+    const message = update.message ?? update.edited_message
+    const chat = message?.chat
+
+    if (!chat?.id) {
+      continue
+    }
+
+    const chatId = String(chat.id)
+    const updatedAtUnix = Number(message?.date ?? 0)
+    const fullName = [chat.first_name, chat.last_name].filter(Boolean).join(' ').trim() || chat.username || chatId
+    const current = chats.get(chatId)
+
+    if (!current || updatedAtUnix >= current.updatedAtUnix) {
+      chats.set(chatId, {
+        chatId,
+        username: chat.username ?? '',
+        fullName,
+        updatedAtUnix
+      })
+    }
+  }
+
+  return Array.from(chats.values()).sort((left, right) => right.updatedAtUnix - left.updatedAtUnix)
+}
+
+export const sendTelegramMessageToUsername = async (username: string, message: string) => {
+  const normalizedUsername = normalizeTelegramUsername(username)
+
+  if (!normalizedUsername) {
+    throw new Error('Telegram user yuborilmadi.')
+  }
+
+  const chat = (await getTelegramChats()).find((item) => normalizeTelegramUsername(item.username) === normalizedUsername)
+
+  if (!chat?.chatId) {
+    throw new Error(`@${normalizedUsername} uchun chat topilmadi. Botga bir marta start bosilishi kerak.`)
+  }
+
+  await sendTelegramMessage(chat.chatId, message)
+
+  return {
+    chatId: chat.chatId,
+    username: chat.username,
+    sentAt: new Date().toISOString()
+  }
 }
 
 export const sendTelegramReminderToClient = async (clientName: string, customMessage?: string) => {
