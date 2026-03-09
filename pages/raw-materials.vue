@@ -8,7 +8,7 @@ definePageMeta({
 
 type IncomingLoadFormState = {
   date: string
-  factory: FactoryName
+  factory: FactoryName | ''
   vehicleType: VehicleType
   tons: number
   supplier: string
@@ -36,7 +36,7 @@ const { t } = useUiLocale()
 
 const createFormState = (): IncomingLoadFormState => ({
   date: latestDate.value,
-  factory: 'Oybek',
+  factory: '',
   vehicleType: 'Howo',
   tons: 0,
   supplier: '',
@@ -373,7 +373,7 @@ const saveLoad = () => {
 
   const payload: Omit<IncomingLoadRecord, 'id'> = {
     date: form.date,
-    factory: form.factory as FactoryName,
+    factory: form.factory,
     vehicleType: form.vehicleType as VehicleType,
     tons: Number(form.tons),
     supplier: form.supplier.trim(),
@@ -385,8 +385,8 @@ const saveLoad = () => {
     notes: form.notes.trim()
   }
 
-  if (!payload.date || !payload.factory || !payload.vehicleType) {
-    formError.value = 'Sana, zavod va mashina turini kiriting.'
+  if (!payload.date || !payload.vehicleType) {
+    formError.value = 'Sana va mashina turini kiriting.'
     return
   }
 
@@ -514,6 +514,10 @@ const clearFilters = () => {
         <span class="data-chip">{{ value }}</span>
       </template>
 
+      <template #cell-factory="{ value }">
+        {{ value || '-' }}
+      </template>
+
       <template #cell-tons="{ value }">
         {{ formatTons(Number(value)) }}
       </template>
@@ -553,7 +557,7 @@ const clearFilters = () => {
   <AppModal :open="modalOpen" :title="editingId ? 'Kirimni tahrirlash' : 'Kirim qo`shish'" size="xl" @close="modalOpen = false">
     <div class="grid gap-4 md:grid-cols-2">
       <AppInput v-model="form.date" type="date" label="Sana" required />
-      <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" required />
+      <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" placeholder="Ixtiyoriy" />
       <AppSelect
         v-model="form.vehicleType"
         label="Mashina turi"
@@ -681,6 +685,10 @@ const clearFilters = () => {
       </div>
 
       <AppTable :columns="supplierLoadColumns" :rows="supplierLoadRows" empty-text="Bu ta'minotchi bo'yicha kirim topilmadi.">
+        <template #cell-factory="{ value }">
+          {{ value || '-' }}
+        </template>
+
         <template #cell-tons="{ value }">
           {{ formatTons(Number(value)) }}
         </template>

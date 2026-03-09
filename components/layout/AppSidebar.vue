@@ -29,13 +29,13 @@ const isActive = (path: string) => {
 <template>
   <div
     v-if="open"
-    class="fixed inset-0 z-40 bg-slate-900/50 lg:hidden"
+    class="fixed inset-0 z-30 bg-slate-900/50 lg:hidden"
     @click="emit('close')"
   />
 
   <aside
     :class="[
-      'fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-200 bg-white transition-transform lg:translate-x-0',
+      'fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white transition-transform lg:z-20 lg:translate-x-0',
       open ? 'translate-x-0' : '-translate-x-full'
     ]"
   >

@@ -347,7 +347,7 @@ const normalizeSaleRecord = (
 
 const normalizeIncomingLoadRecord = (
   record: Partial<IncomingLoadRecord> &
-    Pick<IncomingLoadRecord, 'date' | 'factory' | 'vehicleType' | 'tons' | 'supplier' | 'notes'>,
+    Pick<IncomingLoadRecord, 'date' | 'vehicleType' | 'tons' | 'supplier' | 'notes'> & { factory?: FactoryName | '' },
   fallbackPricePerTon = 0,
   fallbackPaidAmount?: number
 ): IncomingLoadRecord => {
@@ -363,6 +363,7 @@ const normalizeIncomingLoadRecord = (
   return {
     ...record,
     id: record.id ?? createId('load'),
+    factory: record.factory ?? '',
     tons,
     supplier: record.supplier.trim(),
     pricePerTon,
@@ -867,7 +868,7 @@ export const useFactoryAccounting = () => {
         averagePricePerTon: 0,
         loadCount: 0,
         lastLoadDate: '',
-        lastFactory: 'Oybek'
+        lastFactory: ''
       })
     })
 
@@ -934,7 +935,7 @@ export const useFactoryAccounting = () => {
         averagePricePerTon: 0,
         loadCount: 0,
         lastLoadDate: barter.date,
-        lastFactory: 'Oybek' as const
+        lastFactory: ''
       }
 
       current.totalBarter += barter.amount

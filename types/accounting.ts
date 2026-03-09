@@ -52,7 +52,7 @@ export interface DailyFactoryRecord extends CostProfile {
 export interface IncomingLoadRecord {
   id: string
   date: string
-  factory: FactoryName
+  factory: FactoryName | ''
   vehicleType: VehicleType
   tons: number
   supplier: string
@@ -178,7 +178,7 @@ export interface SupplierSummary {
   averagePricePerTon: number
   loadCount: number
   lastLoadDate: string
-  lastFactory: FactoryName
+  lastFactory: FactoryName | ''
 }
 
 export interface ScaleEntry {

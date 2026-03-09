@@ -38,7 +38,7 @@ const { t } = useUiLocale()
 
 type IncomingLoadQuickForm = {
   date: string
-  factory: FactoryName
+  factory: FactoryName | ''
   vehicleType: VehicleType
   tons: number
   supplier: string
@@ -58,7 +58,7 @@ const dailyForm = reactive({
 
 const loadForm = reactive<IncomingLoadQuickForm>({
   date: latestDate.value,
-  factory: 'Oybek',
+  factory: '',
   vehicleType: 'Howo',
   tons: 0,
   supplier: '',
@@ -178,7 +178,7 @@ const saveLoad = () => {
 
   Object.assign(loadForm, {
     date: latestDate.value,
-    factory: 'Oybek',
+    factory: '',
     vehicleType: 'Howo',
     tons: 0,
     supplier: '',
@@ -439,7 +439,7 @@ watch(
 
       <div class="grid gap-4 md:grid-cols-2">
         <AppInput v-model="loadForm.date" type="date" label="Sana" />
-        <AppSelect v-model="loadForm.factory" label="Zavod" :options="factoryOptions" />
+        <AppSelect v-model="loadForm.factory" label="Zavod" :options="factoryOptions" placeholder="Ixtiyoriy" />
         <AppSelect
           v-model="loadForm.vehicleType"
           label="Mashina turi"
