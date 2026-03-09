@@ -148,8 +148,8 @@ const saveDaily = () => {
 }
 
 const saveLoad = () => {
-  if (Number(loadForm.tons) <= 0 || !loadForm.supplier.trim()) {
-    showMessage('Tosh kirimi uchun tonna va ta`minotchini kiriting.')
+  if (!loadForm.supplier.trim()) {
+    showMessage('Tosh kirimi uchun ta`minotchini kiriting.')
     return
   }
 
@@ -448,7 +448,7 @@ watch(
             { label: 'Kamaz', value: 'Kamaz' }
           ]"
         />
-        <AppInput v-model="loadForm.tons" type="number" min="0" step="0.01" label="Tonna" />
+        <AppInput v-model="loadForm.tons" type="number" min="0" step="0.01" label="Tonna" placeholder="Ixtiyoriy" />
         <AppInput v-model="loadForm.totalAmount" type="number" min="0" step="0.01" label="Jami narx" />
         <AppInput v-model="loadForm.paidAmount" type="number" min="0" step="0.01" label="To'langan summa" />
         <AppInput

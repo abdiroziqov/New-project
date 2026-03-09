@@ -390,11 +390,6 @@ const saveLoad = () => {
     return
   }
 
-  if (payload.tons <= 0) {
-    formError.value = 'Tonna miqdori 0 dan katta bo`lishi kerak.'
-    return
-  }
-
   if (!payload.supplier) {
     formError.value = 'Ta`minotchini kiriting.'
     return
@@ -567,7 +562,7 @@ const clearFilters = () => {
         ]"
         required
       />
-      <AppInput v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" required />
+      <AppInput v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" placeholder="Ixtiyoriy" />
       <AppInput v-model="form.totalAmount" type="number" min="0" step="0.01" label="Jami narx" required />
       <AppInput v-model="form.paidAmount" type="number" min="0" step="0.01" label="To'langan summa" />
       <AppInput
@@ -606,7 +601,7 @@ const clearFilters = () => {
         </div>
       </div>
       <p class="mt-3 text-xs text-slate-500">Holat: {{ formPaymentStatus }}</p>
-      <p class="mt-2 text-xs text-slate-500">Masalan, 1 Howo uchun `2 000 000` yoki `1 800 000` jami narx kiriting. Narx / tonna avtomatik chiqadi.</p>
+      <p class="mt-2 text-xs text-slate-500">Masalan, 1 Howo uchun `2 000 000` yoki `1 800 000` jami narx kiriting. Tonna kiritilsa narx / tonna avtomatik chiqadi.</p>
     </div>
 
     <p v-if="formError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
