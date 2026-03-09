@@ -3,6 +3,7 @@ import AppIcon from '~/components/AppIcon.vue'
 
 interface Props {
   open: boolean
+  desktopOpen: boolean
 }
 
 defineProps<Props>()
@@ -35,8 +36,9 @@ const isActive = (path: string) => {
 
   <aside
     :class="[
-      'fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white transition-transform lg:z-20 lg:translate-x-0',
-      open ? 'translate-x-0' : '-translate-x-full'
+      'fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white transition-transform lg:z-20',
+      open ? 'translate-x-0' : '-translate-x-full',
+      desktopOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full'
     ]"
   >
     <div class="border-b border-slate-200 px-4 py-4">

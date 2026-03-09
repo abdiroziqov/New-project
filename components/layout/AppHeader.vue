@@ -46,7 +46,7 @@ const handleLogout = async () => {
       <div class="flex min-w-0 flex-1 items-center gap-3">
         <button
           type="button"
-          class="inline-flex shrink-0 rounded-lg border border-slate-300 p-2 text-slate-600 lg:hidden"
+          class="inline-flex shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600"
           @click="emit('toggleSidebar')"
         >
           {{ t('Menu') }}
