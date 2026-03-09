@@ -31,7 +31,7 @@ const tashkentFormatter = new Intl.DateTimeFormat('en-CA', {
   hour12: false
 })
 
-const getScaleBotToken = () => process.env.TELEGRAM_SCALE_BOT_TOKEN?.trim() || process.env.TELEGRAM_BOT_TOKEN?.trim() || ''
+const getScaleBotToken = () => process.env.TELEGRAM_SCALE_BOT_TOKEN?.trim() || ''
 
 const getDateTimeParts = (unixSeconds: number) => {
   const parts = tashkentFormatter.formatToParts(new Date(unixSeconds * 1000))
@@ -234,7 +234,7 @@ const fetchTelegramScaleUpdates = async () => {
   const botToken = getScaleBotToken()
 
   if (!botToken) {
-    throw new Error('TELEGRAM_SCALE_BOT_TOKEN yoki TELEGRAM_BOT_TOKEN o`rnatilmagan.')
+    throw new Error('TELEGRAM_SCALE_BOT_TOKEN o`rnatilmagan.')
   }
 
   const response = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates?limit=100`)

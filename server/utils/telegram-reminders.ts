@@ -70,11 +70,21 @@ const getClientSales = (snapshot: AccountingStateSnapshot, clientName: string) =
 const getClientManualDebts = (snapshot: AccountingStateSnapshot, clientName: string) =>
   snapshot.manualDebts.filter((record) => normalizeName(record.clientName) === normalizeName(clientName))
 
+const getClientAdvancePayments = (snapshot: AccountingStateSnapshot, clientName: string) =>
+  snapshot.payments.filter(
+    (record) => normalizeName(record.clientName) === normalizeName(clientName) && !record.saleId.trim()
+  )
+
+const getClientBarterRecords = (snapshot: AccountingStateSnapshot, clientName: string) =>
+  snapshot.barterRecords.filter((record) => normalizeName(record.clientName) === normalizeName(clientName))
+
 const buildDebtSummary = (snapshot: AccountingStateSnapshot, clientName: string) => {
   const clientSales = getClientSales(snapshot, clientName)
   const clientManualDebts = getClientManualDebts(snapshot, clientName)
+  const clientAdvancePayments = getClientAdvancePayments(snapshot, clientName)
+  const clientBarterRecords = getClientBarterRecords(snapshot, clientName)
 
-  if (!clientSales.length && !clientManualDebts.length) {
+  if (!clientSales.length && !clientManualDebts.length && !clientAdvancePayments.length && !clientBarterRecords.length) {
     return null
   }
 
@@ -105,7 +115,7 @@ const buildDebtSummary = (snapshot: AccountingStateSnapshot, clientName: string)
     }
   )
 
-  return clientManualDebts.reduce(
+  const summary = clientManualDebts.reduce(
     (current, debt) => {
       current.totalDebt += debt.remainingAmount
       current.totalRevenue += debt.amount
@@ -118,6 +128,12 @@ const buildDebtSummary = (snapshot: AccountingStateSnapshot, clientName: string)
     },
     salesSummary
   )
+
+  const totalAdvance = clientAdvancePayments.reduce((sum, payment) => sum + payment.amount, 0)
+  const totalBarter = clientBarterRecords.reduce((sum, record) => sum + record.amount, 0)
+  summary.totalDebt = Math.max(Number((summary.totalDebt - totalAdvance - totalBarter).toFixed(2)), 0)
+
+  return summary
 }
 
 export const buildTelegramDebtReminderMessage = (

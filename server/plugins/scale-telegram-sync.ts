@@ -1,7 +1,11 @@
 import { processScaleUpdatesSilently } from '~/server/utils/telegram-scale'
 
 export default defineNitroPlugin(() => {
-  if (!process.env.TELEGRAM_SCALE_BOT_TOKEN && !process.env.TELEGRAM_BOT_TOKEN) {
+  if (process.env.TELEGRAM_SCALE_ENABLED !== 'true') {
+    return
+  }
+
+  if (!process.env.TELEGRAM_SCALE_BOT_TOKEN) {
     return
   }
 

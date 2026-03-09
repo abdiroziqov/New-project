@@ -209,7 +209,9 @@ const filteredOutstandingEntries = computed<OutstandingEntry[]>(() => {
       debtRef: record
     }))
 
-  return [...saleEntries, ...debtEntries].sort((left, right) => right.date.localeCompare(left.date))
+  return [...saleEntries, ...debtEntries]
+    .filter((entry) => getClientProfile(entry.clientName).summary?.balanceType === 'bizga_qarz')
+    .sort((left, right) => right.date.localeCompare(left.date))
 })
 
 const filteredDebtors = computed(() => {
@@ -230,6 +232,12 @@ const filteredDebtors = computed(() => {
 
   filteredOutstandingEntries.value.forEach((entry) => {
     const profile = getClientProfile(entry.clientName)
+    const clientBalance = profile.summary
+
+    if (!clientBalance || clientBalance.balanceType !== 'bizga_qarz') {
+      return
+    }
+
     const current = summaryMap.get(entry.clientName) ?? {
       clientName: entry.clientName,
       phone: profile.contact?.phone ?? '',
@@ -242,7 +250,7 @@ const filteredDebtors = computed(() => {
       lastFactory: entry.factory
     }
 
-    current.totalDebt += entry.remainingAmount
+    current.totalDebt = clientBalance.balanceAmount
     current.totalPaid += entry.paidAmount
     current.totalRevenue += entry.totalAmount
     current.totalTons += entry.tons

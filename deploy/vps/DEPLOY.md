@@ -32,6 +32,7 @@ Project fayllarini shu papkaga ko'chiring.
 cat > .env <<'EOF'
 TELEGRAM_BOT_TOKEN=your_bot_token
 REMINDER_TIMEZONE=Asia/Tashkent
+BACKUP_TELEGRAM_CHAT_ID=your_chat_id
 EOF
 ```
 
@@ -70,8 +71,8 @@ sudo certbot --nginx -d example.com -d www.example.com
 SQLite backup:
 
 ```bash
-chmod +x deploy/vps/backup-sqlite.sh
-./deploy/vps/backup-sqlite.sh
+chmod +x deploy/vps/backup-sqlite.sh deploy/vps/restore-sqlite.sh
+./deploy/vps/backup-sqlite.sh /opt/ming-bir-hazina/backups /var/lib/docker/volumes/ming_bir_hazina_data/_data 30
 ```
 
 Cron misol:
@@ -81,7 +82,23 @@ crontab -e
 ```
 
 ```cron
-0 3 * * * /opt/ming-bir-hazina/deploy/vps/backup-sqlite.sh /opt/ming-bir-hazina/backups /var/lib/docker/volumes/ming_bir_hazina_data/_data >> /opt/ming-bir-hazina/backups/backup.log 2>&1
+0 3 * * * /opt/ming-bir-hazina/deploy/vps/backup-sqlite.sh /opt/ming-bir-hazina/backups /var/lib/docker/volumes/ming_bir_hazina_data/_data 30 >> /opt/ming-bir-hazina/backups/backup.log 2>&1
+```
+
+Bu misolda:
+
+- har kuni `03:00` da backup olinadi
+- backup `30 kun` saqlanadi
+- undan eski backup fayllar avtomatik o'chadi
+- `.env` ichida `BACKUP_TELEGRAM_CHAT_ID` bo'lsa, backup natijasi Telegramga yuboriladi
+
+Restore:
+
+```bash
+cd /opt/ming-bir-hazina
+docker compose -f deploy/vps/docker-compose.yml stop
+./deploy/vps/restore-sqlite.sh /opt/ming-bir-hazina/backups/accounting-state-YYYYMMDD-HHMMSS.sqlite /var/lib/docker/volumes/ming_bir_hazina_data/_data /opt/ming-bir-hazina/backups/accounting-state-YYYYMMDD-HHMMSS.json
+docker compose -f deploy/vps/docker-compose.yml start
 ```
 
 ## 7. Update
@@ -98,3 +115,4 @@ docker compose -f deploy/vps/docker-compose.yml up -d --build
 - Asosiy DB: `/data/accounting-state.sqlite`
 - Server o'chib-yonib tursa ham data qoladi
 - Yangi serverga ko'chirish uchun Docker volume ichidagi SQLite faylni olib o'tasiz
+- Backup va restore qilishdan oldin backup yo'li va Docker volume nomini tekshirib oling

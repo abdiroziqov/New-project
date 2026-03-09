@@ -97,6 +97,15 @@ export interface PaymentRecord {
   notes: string
 }
 
+export interface BarterRecord {
+  id: string
+  date: string
+  supplierName: string
+  clientName: string
+  amount: number
+  notes: string
+}
+
 export interface ManualDebtRecord {
   id: string
   date: string
@@ -127,6 +136,7 @@ export interface ClientSummary {
   averagePricePerTon: number
   totalDebt: number
   totalAdvance: number
+  totalBarter: number
   balanceType: BalanceType
   balanceAmount: number
   lastPurchaseDate: string
@@ -162,6 +172,7 @@ export interface SupplierSummary {
   totalPaid: number
   totalDebt: number
   totalAdvance: number
+  totalBarter: number
   balanceType: BalanceType
   balanceAmount: number
   averagePricePerTon: number
@@ -264,6 +275,7 @@ export interface AccountingStateSnapshot {
   sales: SaleRecord[]
   manualDebts: ManualDebtRecord[]
   payments: PaymentRecord[]
+  barterRecords: BarterRecord[]
   expenses: OperationalExpense[]
   contacts: ContactRecord[]
   reminders: ClientReminderSetting[]

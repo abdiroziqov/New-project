@@ -1,3 +1,4 @@
+import barterSource from '~/data/mock/barter-records.json'
 import contactsSource from '~/data/mock/contacts.json'
 import dailySource from '~/data/mock/daily-factory-records.json'
 import expensesSource from '~/data/mock/operational-expenses.json'
@@ -10,6 +11,7 @@ import scaleCashEntriesSource from '~/data/mock/scale-cash-entries.json'
 import scaleEntriesSource from '~/data/mock/scale-entries.json'
 import type {
   ArchiveFactoryScope,
+  BarterRecord,
   ClientReminderSetting,
   ClientDirectoryRecord,
   ClientSummary,
@@ -68,6 +70,7 @@ const formatUzDate = (value: string) => {
 const formatSomValue = (value: number) => `${new Intl.NumberFormat('uz-UZ').format(Math.round(value))} som`
 
 const seedContacts = contactsSource as ContactRecord[]
+const seedBarterRecords = barterSource as BarterRecord[]
 const seedDailyRecords = dailySource as DailyFactoryRecord[]
 const seedIncomingLoads = loadsSource as IncomingLoadRecord[]
 const seedManualDebts = manualDebtsSource as ManualDebtRecord[]
@@ -392,6 +395,15 @@ const normalizeReminderRecord = (record: Partial<ClientReminderSetting>): Client
   lastSentAt: record.lastSentAt ?? ''
 })
 
+const normalizeBarterRecord = (record: Partial<BarterRecord>): BarterRecord => ({
+  id: record.id ?? createId('barter'),
+  date: record.date ?? new Date().toISOString().slice(0, 10),
+  supplierName: record.supplierName?.trim() ?? '',
+  clientName: record.clientName?.trim() ?? '',
+  amount: Number(Math.max(record.amount ?? 0, 0).toFixed(2)),
+  notes: record.notes?.trim() ?? ''
+})
+
 const normalizeScaleEntryRecord = (record: Partial<ScaleEntry>): ScaleEntry => ({
   id: record.id ?? createId('scale'),
   telegramUpdateId: Number(record.telegramUpdateId ?? 0),
@@ -497,6 +509,10 @@ export const useFactoryAccounting = () => {
     'accounting:daily-records',
     () => clone(seedDailyRecords).map((record) => normalizeDailyRecord(record, defaultCostProfile))
   )
+  const barterRecords = useState<BarterRecord[]>(
+    'accounting:barter-records',
+    () => clone(seedBarterRecords).map((record) => normalizeBarterRecord(record))
+  )
   const incomingLoads = useState<IncomingLoadRecord[]>(
     'accounting:incoming-loads',
     () => clone(seedIncomingLoads).map((record) => normalizeIncomingLoadRecord(record, Number(record.pricePerTon ?? 0), record.paidAmount))
@@ -548,6 +564,7 @@ export const useFactoryAccounting = () => {
       ...incomingLoads.value.map((record) => record.date),
       ...manualDebts.value.map((record) => record.date),
       ...payments.value.map((record) => record.date),
+      ...barterRecords.value.map((record) => record.date),
       ...sales.value.map((record) => record.date),
       ...expenses.value.map((record) => record.date)
     ].sort()
@@ -578,10 +595,26 @@ export const useFactoryAccounting = () => {
 
   const clientSummaries = computed<ClientSummary[]>(() => {
     const summaryMap = new Map<string, ClientSummary>()
+    const applyClientBalance = (current: ClientSummary) => {
+      const netBalance = Number((current.totalDebt - current.totalAdvance - current.totalBarter).toFixed(2))
+
+      if (netBalance > 0) {
+        current.balanceType = 'bizga_qarz'
+        current.balanceAmount = netBalance
+      } else if (netBalance < 0) {
+        current.balanceType = 'bizdan_qarz'
+        current.balanceAmount = Math.abs(netBalance)
+      } else {
+        current.balanceType = 'yopilgan'
+        current.balanceAmount = 0
+      }
+    }
     const clientNames = new Set([
       ...clientContacts.value.map((contact) => contact.name),
       ...sales.value.map((sale) => sale.clientName),
-      ...manualDebts.value.map((record) => record.clientName)
+      ...manualDebts.value.map((record) => record.clientName),
+      ...payments.value.filter((record) => !record.saleId.trim()).map((record) => record.clientName),
+      ...barterRecords.value.map((record) => record.clientName)
     ])
 
     Array.from(clientNames).forEach((clientName) => {
@@ -592,6 +625,7 @@ export const useFactoryAccounting = () => {
         averagePricePerTon: 0,
         totalDebt: 0,
         totalAdvance: 0,
+        totalBarter: 0,
         balanceType: 'yopilgan',
         balanceAmount: 0,
         lastPurchaseDate: '',
@@ -607,6 +641,7 @@ export const useFactoryAccounting = () => {
         averagePricePerTon: 0,
         totalDebt: 0,
         totalAdvance: 0,
+        totalBarter: 0,
         balanceType: 'yopilgan' as const,
         balanceAmount: 0,
         lastPurchaseDate: sale.date,
@@ -627,18 +662,7 @@ export const useFactoryAccounting = () => {
         ? Number((current.totalRevenue / getKilograms(current.totalTons)).toFixed(2))
         : 0
 
-      const netBalance = Number((current.totalDebt - current.totalAdvance).toFixed(2))
-
-      if (netBalance > 0) {
-        current.balanceType = 'bizga_qarz'
-        current.balanceAmount = netBalance
-      } else if (netBalance < 0) {
-        current.balanceType = 'bizdan_qarz'
-        current.balanceAmount = Math.abs(netBalance)
-      } else {
-        current.balanceType = 'yopilgan'
-        current.balanceAmount = 0
-      }
+      applyClientBalance(current)
 
       summaryMap.set(sale.clientName, current)
     })
@@ -651,6 +675,7 @@ export const useFactoryAccounting = () => {
         averagePricePerTon: 0,
         totalDebt: 0,
         totalAdvance: 0,
+        totalBarter: 0,
         balanceType: 'yopilgan' as const,
         balanceAmount: 0,
         lastPurchaseDate: debt.date,
@@ -665,20 +690,58 @@ export const useFactoryAccounting = () => {
         current.lastFactory = debt.factory
       }
 
-      const netBalance = Number((current.totalDebt - current.totalAdvance).toFixed(2))
-
-      if (netBalance > 0) {
-        current.balanceType = 'bizga_qarz'
-        current.balanceAmount = netBalance
-      } else if (netBalance < 0) {
-        current.balanceType = 'bizdan_qarz'
-        current.balanceAmount = Math.abs(netBalance)
-      } else {
-        current.balanceType = 'yopilgan'
-        current.balanceAmount = 0
-      }
+      applyClientBalance(current)
 
       summaryMap.set(debt.clientName, current)
+    })
+
+    payments.value
+      .filter((record) => !record.saleId.trim())
+      .forEach((payment) => {
+        const current = summaryMap.get(payment.clientName) ?? {
+          clientName: payment.clientName,
+          totalTons: 0,
+          totalRevenue: 0,
+          averagePricePerTon: 0,
+          totalDebt: 0,
+          totalAdvance: 0,
+          totalBarter: 0,
+          balanceType: 'yopilgan' as const,
+          balanceAmount: 0,
+          lastPurchaseDate: payment.date,
+          lastFactory: payment.factory
+        }
+
+        current.totalAdvance += payment.amount
+
+        if (!current.lastPurchaseDate || payment.date >= current.lastPurchaseDate) {
+          current.lastPurchaseDate = payment.date
+          current.lastFactory = payment.factory
+        }
+
+        applyClientBalance(current)
+
+        summaryMap.set(payment.clientName, current)
+      })
+
+    barterRecords.value.forEach((barter) => {
+      const current = summaryMap.get(barter.clientName) ?? {
+        clientName: barter.clientName,
+        totalTons: 0,
+        totalRevenue: 0,
+        averagePricePerTon: 0,
+        totalDebt: 0,
+        totalAdvance: 0,
+        totalBarter: 0,
+        balanceType: 'yopilgan' as const,
+        balanceAmount: 0,
+        lastPurchaseDate: barter.date,
+        lastFactory: 'Oybek' as const
+      }
+
+      current.totalBarter += barter.amount
+      applyClientBalance(current)
+      summaryMap.set(barter.clientName, current)
     })
 
     return Array.from(summaryMap.values()).sort((left, right) => {
@@ -691,64 +754,56 @@ export const useFactoryAccounting = () => {
   })
 
   const debtorSummaries = computed<DebtorSummary[]>(() => {
-    const summaryMap = new Map<string, DebtorSummary>()
+    const paidMap = new Map<string, number>()
+    const invoiceCountMap = new Map<string, number>()
 
-    sales.value
-      .filter((sale) => sale.remainingAmount > 0)
-      .forEach((sale) => {
-        const current = summaryMap.get(sale.clientName) ?? {
-          clientName: sale.clientName,
-          totalDebt: 0,
-          totalPaid: 0,
-          totalRevenue: 0,
-          totalTons: 0,
-          invoiceCount: 0,
-          lastPurchaseDate: sale.date,
-          lastFactory: sale.factory
-        }
+    sales.value.forEach((sale) => {
+      const key = normalizeClientName(sale.clientName)
+      paidMap.set(key, roundAmount((paidMap.get(key) ?? 0) + sale.paidAmount))
 
-        current.totalDebt += sale.remainingAmount
-        current.totalPaid += sale.paidAmount
-        current.totalRevenue += sale.totalAmount
-        current.totalTons += sale.tons
-        current.invoiceCount += 1
+      if (sale.remainingAmount > 0) {
+        invoiceCountMap.set(key, (invoiceCountMap.get(key) ?? 0) + 1)
+      }
+    })
 
-        if (sale.date >= current.lastPurchaseDate) {
-          current.lastPurchaseDate = sale.date
-          current.lastFactory = sale.factory
-        }
+    manualDebts.value.forEach((debt) => {
+      const key = normalizeClientName(debt.clientName)
+      paidMap.set(key, roundAmount((paidMap.get(key) ?? 0) + debt.paidAmount))
 
-        summaryMap.set(sale.clientName, current)
+      if (debt.remainingAmount > 0) {
+        invoiceCountMap.set(key, (invoiceCountMap.get(key) ?? 0) + 1)
+      }
+    })
+
+    payments.value
+      .filter((record) => !record.saleId.trim())
+      .forEach((payment) => {
+        const key = normalizeClientName(payment.clientName)
+        paidMap.set(key, roundAmount((paidMap.get(key) ?? 0) + payment.amount))
       })
 
-    manualDebts.value
-      .filter((debt) => debt.remainingAmount > 0)
-      .forEach((debt) => {
-        const current = summaryMap.get(debt.clientName) ?? {
-          clientName: debt.clientName,
-          totalDebt: 0,
-          totalPaid: 0,
-          totalRevenue: 0,
-          totalTons: 0,
-          invoiceCount: 0,
-          lastPurchaseDate: debt.date,
-          lastFactory: debt.factory
+    barterRecords.value.forEach((barter) => {
+      const key = normalizeClientName(barter.clientName)
+      paidMap.set(key, roundAmount((paidMap.get(key) ?? 0) + barter.amount))
+    })
+
+    return clientSummaries.value
+      .filter((summary) => summary.balanceType === 'bizga_qarz' && summary.balanceAmount > 0)
+      .map((summary) => {
+        const clientKey = normalizeClientName(summary.clientName)
+
+        return {
+          clientName: summary.clientName,
+          totalDebt: summary.balanceAmount,
+          totalPaid: paidMap.get(clientKey) ?? 0,
+          totalRevenue: summary.totalRevenue,
+          totalTons: summary.totalTons,
+          invoiceCount: invoiceCountMap.get(clientKey) ?? 0,
+          lastPurchaseDate: summary.lastPurchaseDate,
+          lastFactory: summary.lastFactory
         }
-
-        current.totalDebt += debt.remainingAmount
-        current.totalPaid += debt.paidAmount
-        current.totalRevenue += debt.amount
-        current.invoiceCount += 1
-
-        if (debt.date >= current.lastPurchaseDate) {
-          current.lastPurchaseDate = debt.date
-          current.lastFactory = debt.factory
-        }
-
-        summaryMap.set(debt.clientName, current)
       })
-
-    return Array.from(summaryMap.values()).sort((left, right) => right.totalDebt - left.totalDebt)
+      .sort((left, right) => right.totalDebt - left.totalDebt)
   })
 
   const clientDirectory = computed<ClientDirectoryRecord[]>(() =>
@@ -794,7 +849,8 @@ export const useFactoryAccounting = () => {
     const summaryMap = new Map<string, SupplierSummary>()
     const supplierNames = new Set([
       ...supplierContacts.value.map((contact) => contact.name),
-      ...incomingLoads.value.map((load) => load.supplier)
+      ...incomingLoads.value.map((load) => load.supplier),
+      ...barterRecords.value.map((record) => record.supplierName)
     ])
 
     Array.from(supplierNames).forEach((supplierName) => {
@@ -805,6 +861,7 @@ export const useFactoryAccounting = () => {
         totalPaid: 0,
         totalDebt: 0,
         totalAdvance: 0,
+        totalBarter: 0,
         balanceType: 'yopilgan',
         balanceAmount: 0,
         averagePricePerTon: 0,
@@ -822,6 +879,7 @@ export const useFactoryAccounting = () => {
         totalPaid: 0,
         totalDebt: 0,
         totalAdvance: 0,
+        totalBarter: 0,
         balanceType: 'yopilgan' as const,
         balanceAmount: 0,
         averagePricePerTon: 0,
@@ -846,7 +904,7 @@ export const useFactoryAccounting = () => {
 
       current.averagePricePerTon = current.totalTons ? Number((current.totalAmount / current.totalTons).toFixed(2)) : 0
 
-      const netBalance = Number((current.totalAdvance - current.totalDebt).toFixed(2))
+      const netBalance = Number((current.totalAdvance + current.totalBarter - current.totalDebt).toFixed(2))
 
       if (netBalance > 0) {
         current.balanceType = 'bizga_qarz'
@@ -860,6 +918,41 @@ export const useFactoryAccounting = () => {
       }
 
       summaryMap.set(load.supplier, current)
+    })
+
+    barterRecords.value.forEach((barter) => {
+      const current = summaryMap.get(barter.supplierName) ?? {
+        supplierName: barter.supplierName,
+        totalTons: 0,
+        totalAmount: 0,
+        totalPaid: 0,
+        totalDebt: 0,
+        totalAdvance: 0,
+        totalBarter: 0,
+        balanceType: 'yopilgan' as const,
+        balanceAmount: 0,
+        averagePricePerTon: 0,
+        loadCount: 0,
+        lastLoadDate: barter.date,
+        lastFactory: 'Oybek' as const
+      }
+
+      current.totalBarter += barter.amount
+
+      const netBalance = Number((current.totalAdvance + current.totalBarter - current.totalDebt).toFixed(2))
+
+      if (netBalance > 0) {
+        current.balanceType = 'bizga_qarz'
+        current.balanceAmount = netBalance
+      } else if (netBalance < 0) {
+        current.balanceType = 'bizdan_qarz'
+        current.balanceAmount = Math.abs(netBalance)
+      } else {
+        current.balanceType = 'yopilgan'
+        current.balanceAmount = 0
+      }
+
+      summaryMap.set(barter.supplierName, current)
     })
 
     return Array.from(summaryMap.values()).sort((left, right) => {
@@ -1007,9 +1100,10 @@ export const useFactoryAccounting = () => {
   const buildDebtReminderMessage = (clientName: string) => {
     const profile = getClientProfile(clientName)
     const summary = profile.summary
+    const debtor = profile.debtor
     const contact = profile.contact
 
-    if (!summary) {
+    if (!summary || !debtor || debtor.totalDebt <= 0) {
       return ''
     }
 
@@ -1018,7 +1112,7 @@ export const useFactoryAccounting = () => {
       `${summary.clientName}, sizda qarz mavjud.`,
       summary.totalTons > 0 ? `Jami olingan yuk: ${summary.totalTons} tonna` : '',
       `Jami summa: ${formatSomValue(summary.totalRevenue)}`,
-      `Qarz qoldiq: ${formatSomValue(summary.totalDebt)}`,
+      `Qarz qoldiq: ${formatSomValue(debtor.totalDebt)}`,
       `Oxirgi yuk sanasi: ${summary.lastPurchaseDate ? formatUzDate(summary.lastPurchaseDate) : '-'}`,
       `Tel: ${contact?.phone || '-'}`,
       'Iltimos, to`lovni tasdiqlang.'
@@ -1443,6 +1537,43 @@ export const useFactoryAccounting = () => {
     }
 
     payments.value = payments.value.filter((record) => record.id !== id)
+  }
+
+  const addBarterRecord = (payload: Omit<BarterRecord, 'id'>) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    ensureSupplierContact(payload.supplierName)
+    ensureClientContact(payload.clientName)
+    barterRecords.value.unshift(
+      normalizeBarterRecord({
+        id: createId('barter'),
+        ...payload
+      })
+    )
+  }
+
+  const updateBarterRecord = (payload: BarterRecord) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const index = barterRecords.value.findIndex((record) => record.id === payload.id)
+
+    if (index !== -1) {
+      ensureSupplierContact(payload.supplierName)
+      ensureClientContact(payload.clientName)
+      barterRecords.value[index] = normalizeBarterRecord(payload)
+    }
+  }
+
+  const removeBarterRecord = (id: string) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    barterRecords.value = barterRecords.value.filter((record) => record.id !== id)
   }
 
   const addExpense = (payload: Omit<OperationalExpense, 'id'>) => {
@@ -1878,6 +2009,7 @@ export const useFactoryAccounting = () => {
     contacts,
     defaultCosts,
     dailyRecords,
+    barterRecords,
     incomingLoads,
     scaleEntries,
     scaleSyncMeta,
@@ -1938,6 +2070,9 @@ export const useFactoryAccounting = () => {
     addPayment,
     updatePayment,
     removePayment,
+    addBarterRecord,
+    updateBarterRecord,
+    removeBarterRecord,
     upsertReminder,
     removeReminder,
     markReminderSent,

@@ -2,6 +2,7 @@
 type IconName =
   | 'dashboard'
   | 'scale'
+  | 'barter'
   | 'quick-entry'
   | 'manual-entry'
   | 'production'
@@ -53,6 +54,22 @@ defineProps<Props>()
     <path d="M12 11v4" />
     <path d="M9.5 13.5 12 11l2.5 2.5" />
     <path d="M4 19h16" />
+  </svg>
+
+  <svg
+    v-else-if="name === 'barter'"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M7 7h11" />
+    <path d="m14 4 4 3-4 3" />
+    <path d="M17 17H6" />
+    <path d="m10 14-4 3 4 3" />
   </svg>
 
   <svg

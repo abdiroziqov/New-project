@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path'
 import type {
   AccountingStateSnapshot,
   ArchiveFactoryScope,
+  BarterRecord,
   BalanceType,
   ClientReminderSetting,
   ContactRecord,
@@ -32,6 +33,7 @@ import type {
   ShipmentType,
   VehicleType
 } from '~/types/accounting'
+import barterSource from '~/data/mock/barter-records.json'
 import contactsSource from '~/data/mock/contacts.json'
 import dailySource from '~/data/mock/daily-factory-records.json'
 import expensesSource from '~/data/mock/operational-expenses.json'
@@ -288,6 +290,19 @@ const normalizePaymentRecord = (record: unknown): PaymentRecord => {
   }
 }
 
+const normalizeBarterRecord = (record: unknown): BarterRecord => {
+  const source = typeof record === 'object' && record ? (record as Partial<BarterRecord>) : {}
+
+  return {
+    id: asString(source.id, createId('barter')),
+    date: asString(source.date, todayIso()),
+    supplierName: asString(source.supplierName),
+    clientName: asString(source.clientName),
+    amount: asNumber(source.amount),
+    notes: asString(source.notes)
+  }
+}
+
 const normalizeManualDebtRecord = (record: unknown): ManualDebtRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<ManualDebtRecord>) : {}
   const amount = asNumber(source.amount)
@@ -429,6 +444,7 @@ const buildSeedState = (): AccountingStateSnapshot => ({
   sales: (salesSource as unknown[]).map((record) => normalizeSaleRecord(record)),
   manualDebts: (manualDebtsSource as unknown[]).map((record) => normalizeManualDebtRecord(record)),
   payments: (paymentsSource as unknown[]).map((record) => normalizePaymentRecord(record)),
+  barterRecords: (barterSource as unknown[]).map((record) => normalizeBarterRecord(record)),
   expenses: (expensesSource as unknown[]).map((record) => normalizeExpenseRecord(record)),
   contacts: (contactsSource as unknown[]).map((record) => normalizeContactRecord(record)),
   reminders: [],
@@ -456,6 +472,7 @@ export const normalizeAccountingState = (snapshot: unknown): AccountingStateSnap
     sales: Array.isArray(source.sales) ? source.sales.map((record) => normalizeSaleRecord(record)) : [],
     manualDebts: Array.isArray(source.manualDebts) ? source.manualDebts.map((record) => normalizeManualDebtRecord(record)) : [],
     payments: Array.isArray(source.payments) ? source.payments.map((record) => normalizePaymentRecord(record)) : [],
+    barterRecords: Array.isArray(source.barterRecords) ? source.barterRecords.map((record) => normalizeBarterRecord(record)) : [],
     expenses: Array.isArray(source.expenses) ? source.expenses.map((record) => normalizeExpenseRecord(record)) : [],
     contacts: Array.isArray(source.contacts) ? source.contacts.map((record) => normalizeContactRecord(record)) : [],
     reminders: Array.isArray(source.reminders) ? source.reminders.map((record) => normalizeReminderRecord(record)) : [],

@@ -49,6 +49,14 @@ const clientPaymentForm = reactive({
   notes: ''
 })
 
+const clientAdvanceForm = reactive({
+  date: latestDate.value,
+  clientName: '',
+  amount: 0,
+  paymentMethod: 'Naqd' as PaymentMethod,
+  notes: ''
+})
+
 const expenseForm = reactive<Omit<OperationalExpense, 'id'>>({
   date: latestDate.value,
   factory: 'Oybek',
@@ -60,6 +68,7 @@ const expenseForm = reactive<Omit<OperationalExpense, 'id'>>({
 })
 
 const infoMessage = ref('')
+const clientAdvanceError = ref('')
 const clientPaymentError = ref('')
 const expenseError = ref('')
 
@@ -123,6 +132,7 @@ const selectedClientEntry = computed(() =>
 )
 
 const activeClientProfile = computed(() => getClientProfile(clientPaymentForm.clientName))
+const advanceClientProfile = computed(() => getClientProfile(clientAdvanceForm.clientName))
 
 const paymentMethodCards = computed(() =>
   overallSummary.value.paymentMethodBreakdown.map((item) => ({
@@ -142,6 +152,15 @@ const resetClientPaymentForm = () => {
   clientPaymentError.value = ''
 }
 
+const resetClientAdvanceForm = () => {
+  clientAdvanceForm.date = latestDate.value
+  clientAdvanceForm.clientName = ''
+  clientAdvanceForm.amount = 0
+  clientAdvanceForm.paymentMethod = 'Naqd'
+  clientAdvanceForm.notes = ''
+  clientAdvanceError.value = ''
+}
+
 const resetExpenseForm = () => {
   expenseForm.date = latestDate.value
   expenseForm.factory = 'Oybek'
@@ -151,6 +170,38 @@ const resetExpenseForm = () => {
   expenseForm.paymentMethod = 'Naqd'
   expenseForm.notes = ''
   expenseError.value = ''
+}
+
+const saveClientAdvance = () => {
+  clientAdvanceError.value = ''
+
+  if (!clientAdvanceForm.date || !clientAdvanceForm.clientName.trim()) {
+    clientAdvanceError.value = 'Klient va sanani tanlang.'
+    return
+  }
+
+  const amount = Number(clientAdvanceForm.amount)
+
+  if (amount <= 0) {
+    clientAdvanceError.value = 'Summa 0 dan katta bo`lishi kerak.'
+    return
+  }
+
+  const profile = getClientProfile(clientAdvanceForm.clientName)
+
+  addPayment({
+    date: clientAdvanceForm.date,
+    factory: profile.summary?.lastFactory ?? 'Oybek',
+    clientName: clientAdvanceForm.clientName.trim(),
+    amount,
+    paymentMethod: clientAdvanceForm.paymentMethod,
+    saleId: '',
+    saleDate: '',
+    notes: clientAdvanceForm.notes.trim() || 'Oldindan pul'
+  })
+
+  resetClientAdvanceForm()
+  showMessage('Klient avansi qo`shildi.')
 }
 
 const saveClientPayment = () => {
@@ -275,6 +326,61 @@ watch(
       :value="card.value"
       :subtitle="card.subtitle"
     />
+  </section>
+
+  <section class="panel p-5">
+    <header class="mb-4">
+      <h3 class="text-base font-semibold text-slate-900">{{ t('Oldindan pul') }}</h3>
+      <p class="text-sm text-slate-500">{{ t("Klient yuk olmasdan oldin pul tashlab qo'ysa, shu yerga yozing. Bu summa klient balansida bizdan qarz bo'lib turadi.") }}</p>
+    </header>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <AppInput v-model="clientAdvanceForm.date" type="date" label="Sana" />
+      <AppSelect
+        v-model="clientAdvanceForm.clientName"
+        label="Klient"
+        :options="clientOptions"
+        :translate-options="false"
+        placeholder="Klientni tanlang"
+      />
+      <AppInput v-model="clientAdvanceForm.amount" type="number" min="0" step="0.01" label="Summa" />
+      <AppSelect
+        v-model="clientAdvanceForm.paymentMethod"
+        label="To'lov turi"
+        :options="paymentMethods.map((item) => ({ label: item, value: item }))"
+      />
+      <AppInput v-model="clientAdvanceForm.notes" label="Izoh" placeholder="Masalan, 40 mln oldindan tushdi" />
+    </div>
+
+    <div v-if="advanceClientProfile.summary" class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div class="grid gap-3 md:grid-cols-4">
+        <div>
+          <p class="text-xs text-slate-500">Hozirgi balans</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ advanceClientProfile.summary.balanceType === 'yopilgan' ? 'Yopilgan' : formatSom(advanceClientProfile.summary.balanceAmount) }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">Balans turi</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ advanceClientProfile.summary.balanceType === 'bizga_qarz' ? 'Bizga qarz' : advanceClientProfile.summary.balanceType === 'bizdan_qarz' ? 'Bizdan qarz' : 'Yopilgan' }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">Jami tushum</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatSom(advanceClientProfile.summary.totalRevenue) }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">Jami tonna</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatTons(advanceClientProfile.summary.totalTons) }}</p>
+        </div>
+      </div>
+    </div>
+
+    <p v-if="clientAdvanceError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+      {{ clientAdvanceError }}
+    </p>
+
+    <div class="mt-4 flex justify-end gap-2">
+      <button type="button" class="btn-secondary" @click="resetClientAdvanceForm">{{ t('Tozalash') }}</button>
+      <button type="button" class="btn-primary" @click="saveClientAdvance">{{ t("Oldindan pulni kiritish") }}</button>
+    </div>
   </section>
 
   <section class="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">

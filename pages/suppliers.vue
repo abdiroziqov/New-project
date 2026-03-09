@@ -74,7 +74,8 @@ const summaryTotals = computed(() => ({
   totalAmount: filteredSuppliers.value.reduce((sum, supplier) => sum + supplier.totalAmount, 0),
   totalPaid: filteredSuppliers.value.reduce((sum, supplier) => sum + supplier.totalPaid, 0),
   totalDebt: filteredSuppliers.value.reduce((sum, supplier) => sum + supplier.totalDebt, 0),
-  totalAdvance: filteredSuppliers.value.reduce((sum, supplier) => sum + supplier.totalAdvance, 0)
+  totalAdvance: filteredSuppliers.value.reduce((sum, supplier) => sum + supplier.totalAdvance, 0),
+  totalBarter: filteredSuppliers.value.reduce((sum, supplier) => sum + supplier.totalBarter, 0)
 }))
 
 const supplierRows = computed<Record<string, unknown>[]>(() =>
@@ -126,6 +127,7 @@ const buildDirectorySheets = () => [
       { metric: 'Jami tosh', value: Number(summaryTotals.value.totalTons.toFixed(2)) },
       { metric: 'Jami summa', value: Math.round(summaryTotals.value.totalAmount) },
       { metric: "Jami to'langan", value: Math.round(summaryTotals.value.totalPaid) },
+      { metric: 'Barter', value: Math.round(summaryTotals.value.totalBarter) },
       { metric: 'Biz qarzmiz', value: Math.round(summaryTotals.value.totalDebt) },
       { metric: 'U qarz', value: Math.round(summaryTotals.value.totalAdvance) }
     ]
@@ -146,6 +148,7 @@ const buildSelectedSupplierSheets = () => {
         { metric: "O'rtacha narx / tonna", value: Math.round(selectedSupplierSummary.value.averagePricePerTon) },
         { metric: 'Jami summa', value: Math.round(selectedSupplierSummary.value.totalAmount) },
         { metric: "Jami to'langan", value: Math.round(selectedSupplierSummary.value.totalPaid) },
+        { metric: 'Barter', value: Math.round(selectedSupplierSummary.value.totalBarter) },
         { metric: 'Biz qarzmiz', value: Math.round(selectedSupplierSummary.value.totalDebt) },
         { metric: 'U qarz', value: Math.round(selectedSupplierSummary.value.totalAdvance) },
         { metric: 'Balans turi', value: balanceLabel(selectedSupplierSummary.value.balanceType) },
@@ -230,10 +233,11 @@ const balanceToneClass = (balanceType: unknown) => {
     <ExportActions label="Yuklab olish" @excel="exportDirectoryExcel" @pdf="exportDirectoryPdf" />
   </section>
 
-  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
     <StatCard title="Ta'minotchilar" :value="summaryTotals.supplierCount" subtitle="faol supplierlar" />
     <StatCard title="Jami tosh" :value="formatTons(summaryTotals.totalTons)" subtitle="butun davr" />
     <StatCard title="Jami summa" :value="formatSom(summaryTotals.totalAmount)" subtitle="hamma kirimlar" />
+    <StatCard title="Barter" :value="formatSom(summaryTotals.totalBarter)" subtitle="o'zaro yopilgan" />
     <StatCard title="Biz qarzmiz" :value="formatSom(summaryTotals.totalDebt)" subtitle="supplierlarga qoldiq" />
     <StatCard title="U qarz" :value="formatSom(summaryTotals.totalAdvance)" subtitle="ortiqcha to'lov" />
   </section>
@@ -301,7 +305,7 @@ const balanceToneClass = (balanceType: unknown) => {
           <ExportActions label="Yuklab olish" @excel="exportSelectedSupplierExcel" @pdf="exportSelectedSupplierPdf" />
         </header>
 
-        <div class="grid gap-4 md:grid-cols-4">
+        <div class="grid gap-4 md:grid-cols-5">
           <div class="rounded-2xl bg-slate-50 px-4 py-3">
             <p class="text-xs text-slate-500">Jami tosh</p>
             <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatTons(selectedSupplierSummary.totalTons) }}</p>
@@ -317,6 +321,10 @@ const balanceToneClass = (balanceType: unknown) => {
           <div class="rounded-2xl bg-sky-50 px-4 py-3">
             <p class="text-xs text-sky-700">U qarz</p>
             <p class="mt-1 text-lg font-semibold text-sky-700">{{ formatSom(selectedSupplierSummary.totalAdvance) }}</p>
+          </div>
+          <div class="rounded-2xl bg-brand-50 px-4 py-3">
+            <p class="text-xs text-brand-700">Barter</p>
+            <p class="mt-1 text-lg font-semibold text-brand-700">{{ formatSom(selectedSupplierSummary.totalBarter) }}</p>
           </div>
         </div>
 

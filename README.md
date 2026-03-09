@@ -125,3 +125,25 @@ Muhim:
 Agar lokal datani ham olib chiqmoqchi bo'lsangiz:
 - [accounting-state.sqlite](/Users/ilhomabdiroziqov/Documents/New%20project/data/storage/accounting-state.sqlite)
 ni serverdagi `/data/accounting-state.sqlite` ichiga bir marta ko'chirasiz.
+
+## Backup
+
+VPS uchun tayyor scriptlar:
+
+- [backup-sqlite.sh](/Users/ilhomabdiroziqov/Documents/New%20project/deploy/vps/backup-sqlite.sh)
+- [restore-sqlite.sh](/Users/ilhomabdiroziqov/Documents/New%20project/deploy/vps/restore-sqlite.sh)
+
+Misol:
+
+```bash
+chmod +x deploy/vps/backup-sqlite.sh deploy/vps/restore-sqlite.sh
+./deploy/vps/backup-sqlite.sh /opt/ming-bir-hazina/backups /var/lib/docker/volumes/ming_bir_hazina_data/_data 30
+```
+
+Bu:
+
+- SQLite backup oladi
+- JSON backupni ham nusxalaydi
+- backupni `30 kun` saqlaydi
+- undan eskilarini o'chiradi
+- `.env` ichida `BACKUP_TELEGRAM_CHAT_ID` bo'lsa, natija Telegramga yuboriladi

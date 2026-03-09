@@ -11,6 +11,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       scaleSyncMeta,
       scaleCashEntries,
       payments,
+      barterRecords,
       sales,
       manualDebts,
       expenses,
@@ -35,6 +36,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       sales: sales.value,
       manualDebts: manualDebts.value,
       payments: payments.value,
+      barterRecords: barterRecords.value,
       expenses: expenses.value,
       contacts: contacts.value,
       reminders: reminders.value,
@@ -52,6 +54,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       sales.value = snapshot.sales
       manualDebts.value = snapshot.manualDebts
       payments.value = snapshot.payments
+      barterRecords.value = snapshot.barterRecords
       expenses.value = snapshot.expenses
       contacts.value = snapshot.contacts
       reminders.value = snapshot.reminders
@@ -68,6 +71,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           snapshot.sales.length ||
           snapshot.manualDebts.length ||
           snapshot.payments.length ||
+          snapshot.barterRecords.length ||
           snapshot.expenses.length ||
           snapshot.contacts.length ||
           snapshot.reminders.length ||
@@ -86,6 +90,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           sales: JSON.parse(window.localStorage.getItem(`${storagePrefix}sales`) || '[]'),
           manualDebts: JSON.parse(window.localStorage.getItem(`${storagePrefix}manual-debts`) || '[]'),
           payments: JSON.parse(window.localStorage.getItem(`${storagePrefix}payments`) || '[]'),
+          barterRecords: JSON.parse(window.localStorage.getItem(`${storagePrefix}barter-records`) || '[]'),
           expenses: JSON.parse(window.localStorage.getItem(`${storagePrefix}expenses`) || '[]'),
           contacts: JSON.parse(window.localStorage.getItem(`${storagePrefix}contacts`) || '[]'),
           reminders: JSON.parse(window.localStorage.getItem(`${storagePrefix}reminders`) || '[]'),
@@ -167,6 +172,7 @@ export default defineNuxtPlugin((nuxtApp) => {
             sales,
             manualDebts,
             payments,
+            barterRecords,
             expenses,
             contacts,
             reminders,

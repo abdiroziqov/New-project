@@ -3,7 +3,6 @@ definePageMeta({
   layout: false
 })
 
-const { isAuthenticated } = useAuth()
 const { t } = useUiLocale()
 const runtimeConfig = useRuntimeConfig()
 
@@ -65,13 +64,6 @@ const products = [
           <div class="mt-8 space-y-3">
             <NuxtLink to="/login" class="btn-primary flex w-full items-center justify-center">
               {{ t('Login sahifasiga o\'tish') }}
-            </NuxtLink>
-            <NuxtLink
-              v-if="isAuthenticated"
-              to="/dashboard"
-              class="flex w-full items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-brand-200 hover:text-brand-700"
-            >
-              {{ t("Dashboardga o'tish") }}
             </NuxtLink>
           </div>
         </section>
