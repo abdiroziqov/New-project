@@ -104,6 +104,22 @@ docker compose up -d --build
 
 Keyin `3000` portni domain yoki reverse proxy bilan internetga ochasiz.
 
+### Auto Deploy
+
+Repo ichida GitHub Actions workflow bor:
+
+- [deploy.yml](/Users/ilhomabdiroziqov/Documents/New%20project/.github/workflows/deploy.yml)
+- [deploy.sh](/Users/ilhomabdiroziqov/Documents/New%20project/deploy/vps/deploy.sh)
+
+`main` branchga `push` bo'lganda VPS ga avtomatik deploy qilish uchun GitHub repository secrets qo'ying:
+
+- `HOST`
+- `USERNAME`
+- `PORT`
+- `SSH_KEY`
+
+Serverdagi `/opt/ming-bir-hazina/.env` saqlanib qoladi va workflow uni ustidan yozmaydi.
+
 To'liq VPS yo'riqnoma:
 - [DEPLOY.md](/Users/ilhomabdiroziqov/Documents/New%20project/deploy/vps/DEPLOY.md)
 - [deploy/vps/docker-compose.yml](/Users/ilhomabdiroziqov/Documents/New%20project/deploy/vps/docker-compose.yml)

@@ -5,22 +5,62 @@ on:
     branches:
       - main
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.PORT }}
-          script: |
-            cd /root/New-project
-            git pull
-            yarn install
-            yarn build
-            pm2 restart index
-            pm2 save
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        env:
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PORT: ${{ secrets.PORT }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$HOST"
+          test -n "$USERNAME"
+          test -n "$PORT"
+          test -n "$SSH_KEY"
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync project files
+        env:
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PORT: ${{ secrets.PORT }}
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude '.git' \
+            --exclude 'node_modules' \
+            --exclude '.nuxt' \
+            --exclude '.output' \
+            --exclude 'dist' \
+            --exclude '.DS_Store' \
+            --exclude '.env' \
+            --exclude '.env.local' \
+            --exclude '.env.production' \
+            --exclude 'data/storage/' \
+            -e "ssh -p $PORT" \
+            ./ "$USERNAME@$HOST:/opt/ming-bir-hazina/"
+
+      - name: Deploy on server
+        env:
+          HOST: ${{ secrets.HOST }}
+          USERNAME: ${{ secrets.USERNAME }}
+          PORT: ${{ secrets.PORT }}
+        run: |
+          set -euo pipefail
+          ssh -p "$PORT" "$USERNAME@$HOST" 'bash /opt/ming-bir-hazina/deploy/vps/deploy.sh /opt/ming-bir-hazina'

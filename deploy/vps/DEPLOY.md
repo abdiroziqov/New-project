@@ -109,6 +109,29 @@ git pull
 docker compose -f deploy/vps/docker-compose.yml up -d --build
 ```
 
+## 8. Auto Deploy
+
+GitHub Actions endi `main` branchga `push` bo'lganda VPS'ga o'zi deploy qiladi.
+
+Kerakli GitHub repository secrets:
+
+- `HOST` - VPS IP
+- `USERNAME` - odatda `root`
+- `PORT` - odatda `22`
+- `SSH_KEY` - VPS ga kira oladigan private key
+
+Workflow:
+
+- project fayllarini `/opt/ming-bir-hazina` ga `rsync` qiladi
+- `deploy/vps/deploy.sh` ni ishga tushiradi
+- Docker app'ni qayta build qiladi
+- nginx'ni reload qiladi
+
+Muhim:
+
+- VPS ichida `.env` oldindan yaratilgan bo'lishi kerak
+- auto deploy `password` bilan emas, `SSH key` bilan ishlaydi
+
 ## Muhim
 
 - Data Docker volume ichida saqlanadi
