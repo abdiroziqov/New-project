@@ -33,6 +33,7 @@ const {
   updateSale,
   addManualDebt,
   updateManualDebt,
+  removeManualDebt,
   addPayment,
   reminderList,
   getClientReminder,
@@ -67,12 +68,16 @@ const paymentForm = reactive({
 
 const manualDebtModalOpen = ref(false)
 const manualDebtError = ref('')
+const editingManualDebtId = ref('')
 const manualDebtForm = reactive({
   date: latestDate.value,
   clientName: '',
   amount: 0,
   notes: ''
 })
+
+const deleteManualDebtDialogOpen = ref(false)
+const selectedManualDebt = ref<ManualDebtRecord | null>(null)
 
 const reminderModalOpen = ref(false)
 const reminderForm = reactive({
@@ -268,6 +273,22 @@ const filteredDebtors = computed(() => {
   return Array.from(summaryMap.values()).sort((left, right) => right.totalDebt - left.totalDebt)
 })
 
+const getEditableManualDebtForClient = (clientName: string) => {
+  const clientEntries = filteredOutstandingEntries.value.filter((entry) => entry.clientName === clientName)
+
+  if (clientEntries.some((entry) => entry.entryType === 'sale')) {
+    return null
+  }
+
+  const manualEntries = clientEntries.filter((entry) => entry.entryType === 'manualDebt' && entry.debtRef)
+
+  if (manualEntries.length !== 1) {
+    return null
+  }
+
+  return manualEntries[0].debtRef
+}
+
 const filteredPayments = computed(() =>
   payments.value
     .filter((record) => {
@@ -295,10 +316,12 @@ const summary = computed(() => ({
 const debtorRows = computed<Record<string, unknown>[]>(() =>
   filteredDebtors.value.map((record) => {
     const reminder = getClientReminder(record.clientName)
+    const editableManualDebt = getEditableManualDebtForClient(record.clientName)
 
     return {
       ...record,
-      reminder: reminder?.enabled ? `Yoqilgan · ${reminder.frequency === 'daily' ? 'Har kun' : '2 kunda bir'} · ${reminder.time}` : 'O`chiq'
+      reminder: reminder?.enabled ? `Yoqilgan · ${reminder.frequency === 'daily' ? 'Har kun' : '2 kunda bir'} · ${reminder.time}` : 'O`chiq',
+      editableManualDebt
     }
   })
 )
@@ -358,6 +381,7 @@ const openManualDebtModal = () => {
     return
   }
 
+  editingManualDebtId.value = ''
   manualDebtForm.date = latestDate.value
   manualDebtForm.clientName = ''
   manualDebtForm.amount = 0
@@ -368,6 +392,7 @@ const openManualDebtModal = () => {
 
 const closeManualDebtModal = () => {
   manualDebtModalOpen.value = false
+  editingManualDebtId.value = ''
   manualDebtForm.date = latestDate.value
   manualDebtForm.clientName = ''
   manualDebtForm.amount = 0
@@ -393,16 +418,70 @@ const saveManualDebt = () => {
     return
   }
 
-  addManualDebt({
-    date: manualDebtForm.date,
-    factory: (getClientProfile(clientName).summary?.lastFactory ?? 'Oybek') as FactoryName,
-    clientName,
-    amount,
-    paidAmount: 0,
-    notes: manualDebtForm.notes.trim()
-  })
+  if (editingManualDebtId.value) {
+    const existing = manualDebts.value.find((record) => record.id === editingManualDebtId.value)
+
+    if (!existing) {
+      manualDebtError.value = 'Qarz yozuvi topilmadi.'
+      return
+    }
+
+    updateManualDebt({
+      ...existing,
+      date: manualDebtForm.date,
+      clientName,
+      amount,
+      notes: manualDebtForm.notes.trim()
+    })
+  } else {
+    addManualDebt({
+      date: manualDebtForm.date,
+      factory: (getClientProfile(clientName).summary?.lastFactory ?? 'Oybek') as FactoryName,
+      clientName,
+      amount,
+      paidAmount: 0,
+      notes: manualDebtForm.notes.trim()
+    })
+  }
 
   closeManualDebtModal()
+}
+
+const openEditManualDebtModal = (record: ManualDebtRecord) => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  editingManualDebtId.value = record.id
+  manualDebtForm.date = record.date
+  manualDebtForm.clientName = record.clientName
+  manualDebtForm.amount = record.amount
+  manualDebtForm.notes = record.notes
+  manualDebtError.value = ''
+  manualDebtModalOpen.value = true
+}
+
+const askDeleteManualDebt = (record: ManualDebtRecord) => {
+  if (!isAdmin.value) {
+    return
+  }
+
+  selectedManualDebt.value = record
+  deleteManualDebtDialogOpen.value = true
+}
+
+const closeDeleteManualDebt = () => {
+  selectedManualDebt.value = null
+  deleteManualDebtDialogOpen.value = false
+}
+
+const confirmDeleteManualDebt = () => {
+  if (!isAdmin.value || !selectedManualDebt.value) {
+    return
+  }
+
+  removeManualDebt(selectedManualDebt.value.id)
+  closeDeleteManualDebt()
 }
 
 const openTelegramModal = (clientName: string) => {
@@ -625,6 +704,22 @@ const clearFilters = () => {
 
         <template #cell-actions="{ row }">
           <div class="flex justify-end gap-2">
+            <button
+              v-if="isAdmin && row.editableManualDebt"
+              type="button"
+              class="btn-secondary !px-3 !py-1.5 text-xs"
+              @click="openEditManualDebtModal(row.editableManualDebt as ManualDebtRecord)"
+            >
+              Tahrirlash
+            </button>
+            <button
+              v-if="isAdmin && row.editableManualDebt"
+              type="button"
+              class="btn-danger !px-3 !py-1.5 text-xs"
+              @click="askDeleteManualDebt(row.editableManualDebt as ManualDebtRecord)"
+            >
+              O'chirish
+            </button>
             <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openTelegramModal(String(row.clientName))">TG</button>
             <button
               v-if="isAdmin"
@@ -681,6 +776,22 @@ const clearFilters = () => {
           <div class="flex justify-end gap-2">
             <button v-if="isAdmin" type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openPaymentModal(row)">
               To'lov
+            </button>
+            <button
+              v-if="isAdmin && String(row.entryType) === 'manualDebt'"
+              type="button"
+              class="btn-secondary !px-3 !py-1.5 text-xs"
+              @click="openEditManualDebtModal((row.debtRef as ManualDebtRecord))"
+            >
+              Tahrirlash
+            </button>
+            <button
+              v-if="isAdmin && String(row.entryType) === 'manualDebt'"
+              type="button"
+              class="btn-danger !px-3 !py-1.5 text-xs"
+              @click="askDeleteManualDebt((row.debtRef as ManualDebtRecord))"
+            >
+              O'chirish
             </button>
             <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openTelegramModal(String(row.clientName))">
               TG
@@ -739,7 +850,7 @@ const clearFilters = () => {
     </AppTable>
   </section>
 
-  <AppModal :open="manualDebtModalOpen" title="Eski qarz qo'shish" size="sm" @close="closeManualDebtModal">
+  <AppModal :open="manualDebtModalOpen" :title="editingManualDebtId ? 'Eski qarzni tahrirlash' : 'Eski qarz qo`shish'" size="sm" @close="closeManualDebtModal">
     <div class="space-y-4">
       <AppInput v-model="manualDebtForm.date" type="date" label="Sana" />
       <AppInput
@@ -767,6 +878,16 @@ const clearFilters = () => {
       </div>
     </template>
   </AppModal>
+
+  <ConfirmDialog
+    :open="deleteManualDebtDialogOpen"
+    title="Eski qarzni o'chirish"
+    :message="`Tanlangan ${selectedManualDebt?.clientName ?? ''} qarz yozuvini o'chirasizmi?`"
+    confirm-text="O'chirish"
+    cancel-text="Bekor qilish"
+    @confirm="confirmDeleteManualDebt"
+    @cancel="closeDeleteManualDebt"
+  />
 
   <AppModal :open="paymentModalOpen" title="To'lov kiritish" size="sm" @close="closePaymentModal">
     <div class="space-y-4">

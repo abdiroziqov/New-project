@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { DailyFactoryRecord, FactoryName, ProductType } from '~/types/accounting'
+import type { DailyFactoryRecord, ExpenseCategory, FactoryName, PaymentMethod, ProductType } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
 import { isBulkAllowedForProduct, normalizeBulkOutputTons } from '~/composables/useProductRules'
 
@@ -12,8 +12,11 @@ const {
   defaultCosts,
   factoryOptions,
   productTypes,
+  expenseCategories,
+  paymentMethods,
   latestDate,
   addDailyRecord,
+  addExpense,
   updateDailyRecord,
   removeDailyRecord
 } = useFactoryAccounting()
@@ -28,6 +31,13 @@ type DailyFactoryCreateState = {
   baggedOutputTons: number
   bulkOutputTons: number
   notes: string
+  expenses: Array<{
+    category: ExpenseCategory
+    description: string
+    amount: number
+    paymentMethod: PaymentMethod
+    notes: string
+  }>
 }
 
 const createFormState = (): Omit<DailyFactoryRecord, 'id'> => ({
@@ -48,7 +58,8 @@ const createFactoryState = (): DailyFactoryCreateState => ({
   productType: 'Qum',
   baggedOutputTons: 0,
   bulkOutputTons: 0,
-  notes: ''
+  notes: '',
+  expenses: []
 })
 
 const filters = reactive({
@@ -177,11 +188,18 @@ const getCreateFactoryCostBreakdown = (factory: FactoryName) =>
   )
 const getCreateFactoryTotalCost = (factory: FactoryName) =>
   Number((getCreateFactoryBaggedTotalCost(factory) + getCreateFactoryBulkTotalCost(factory)).toFixed(2))
+const getCreateFactoryExtraExpenses = (factory: FactoryName) =>
+  Number(
+    getCreateFactoryState(factory).expenses
+      .reduce((sum, row) => sum + Number(row.amount || 0), 0)
+      .toFixed(2)
+  )
 const createSummary = computed(() => ({
   totalOutputTons: createFactories.reduce((sum, factory) => sum + getCreateFactoryOutputTons(factory), 0),
   totalUsedStoneTons: createFactories.reduce((sum, factory) => sum + getCreateFactoryUsedStoneTons(factory), 0),
   totalBagCount: createFactories.reduce((sum, factory) => sum + getCreateFactoryBagCount(factory), 0),
-  totalCost: createFactories.reduce((sum, factory) => sum + getCreateFactoryTotalCost(factory), 0)
+  totalCost: createFactories.reduce((sum, factory) => sum + getCreateFactoryTotalCost(factory), 0),
+  totalExtraExpenses: createFactories.reduce((sum, factory) => sum + getCreateFactoryExtraExpenses(factory), 0)
 }))
 
 const formBaggedCostPerTon = computed(() => getCostPerTon(defaultCosts.value, form.productType))
@@ -223,6 +241,22 @@ const resetCreateForm = () => {
 
   editingId.value = null
   formError.value = ''
+}
+
+const createExpenseRow = () => ({
+  category: 'Boshqa' as ExpenseCategory,
+  description: '',
+  amount: 0,
+  paymentMethod: 'Naqd' as PaymentMethod,
+  notes: ''
+})
+
+const addCreateFactoryExpense = (factory: FactoryName) => {
+  getCreateFactoryState(factory).expenses.push(createExpenseRow())
+}
+
+const removeCreateFactoryExpense = (factory: FactoryName, index: number) => {
+  getCreateFactoryState(factory).expenses.splice(index, 1)
 }
 
 const resetForm = () => {
@@ -302,12 +336,36 @@ const saveRecord = () => {
       })
       .filter((payload): payload is Omit<DailyFactoryRecord, 'id'> => Boolean(payload))
 
-    if (!payloads.length) {
-      formError.value = 'Kamida bitta zavod uchun mahsulot miqdorini kiriting.'
+    const hasAnyExpense = createFactories.some((factory) =>
+      getCreateFactoryState(factory).expenses.some((row) => Number(row.amount) > 0)
+    )
+
+    if (!payloads.length && !hasAnyExpense) {
+      formError.value = 'Kamida bitta zavod uchun mahsulot yoki harajat kiriting.'
       return
     }
 
-    payloads.forEach((payload) => addDailyRecord(payload))
+    createFactories.forEach((factory) => {
+      const payload = payloads.find((item) => item.factory === factory)
+
+      if (payload) {
+        addDailyRecord(payload)
+      }
+
+      getCreateFactoryState(factory).expenses
+        .filter((row) => Number(row.amount) > 0)
+        .forEach((row) => {
+          addExpense({
+            date: createDate.value,
+            factory,
+            category: row.category,
+            description: row.description.trim() || `${factory} ${row.category}`,
+            amount: Number(row.amount),
+            paymentMethod: row.paymentMethod,
+            notes: row.notes.trim()
+          })
+        })
+    })
     modalOpen.value = false
     resetCreateForm()
     return
@@ -548,6 +606,10 @@ watch(
                   <p class="text-xs text-slate-500">Jami tannarx</p>
                   <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(createSummary.totalCost) }}</p>
                 </div>
+                <div>
+                  <p class="text-xs text-slate-500">Qo'shimcha chiqim</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(createSummary.totalExtraExpenses) }}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -612,9 +674,59 @@ watch(
                   <p class="text-xs text-slate-500">Bozorliq</p>
                   <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(getCreateFactoryCostBreakdown(factory).market) }}</p>
                 </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Qo'shimcha chiqim</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(getCreateFactoryExtraExpenses(factory)) }}</p>
+                </div>
                 <div class="md:col-span-2">
                   <AppInput v-model="createForms[factory].notes" label="Izoh" placeholder="Kunlik eslatma yoki izoh" />
                 </div>
+              </div>
+
+              <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white p-4">
+                <div class="mb-3 flex items-center justify-between">
+                  <div>
+                    <h5 class="text-sm font-semibold text-slate-900">Qo'shimcha harajatlar</h5>
+                    <p class="text-xs text-slate-500">Bozorliq, pagruzka, ishchi puli, avans va boshqa chiqimlar</p>
+                  </div>
+                  <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="addCreateFactoryExpense(factory)">
+                    Harajat qo'shish
+                  </button>
+                </div>
+
+                <div v-if="createForms[factory].expenses.length" class="space-y-3">
+                  <div
+                    v-for="(expense, index) in createForms[factory].expenses"
+                    :key="`${factory}-${index}`"
+                    class="rounded-2xl border border-slate-200 bg-slate-50 p-3"
+                  >
+                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                      <AppSelect
+                        v-model="expense.category"
+                        label="Kategoriya"
+                        :options="expenseCategories.map((item) => ({ label: item, value: item }))"
+                      />
+                      <AppInput v-model="expense.description" label="Tavsif" placeholder="Masalan, Jamshid ishchi kunligi" />
+                      <AppInput v-model="expense.amount" type="number" min="0" step="0.01" label="Summa" />
+                      <AppSelect
+                        v-model="expense.paymentMethod"
+                        label="To'lov turi"
+                        :options="paymentMethods.map((item) => ({ label: item, value: item }))"
+                      />
+                      <div class="flex items-end">
+                        <button type="button" class="btn-danger w-full !px-3 !py-2 text-xs" @click="removeCreateFactoryExpense(factory, index)">
+                          O'chirish
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="mt-3">
+                      <AppInput v-model="expense.notes" label="Izoh" placeholder="Qo'shimcha izoh" />
+                    </div>
+                  </div>
+                </div>
+
+                <p v-else class="text-sm text-slate-500">Harajat yozuvi yo'q. Kerak bo'lsa shu zavod blokida qo'shib qo'ying.</p>
               </div>
             </section>
           </div>
