@@ -27,6 +27,7 @@ export interface CostProfile {
   chalkPricePerTon: number
   sandWorkerCostPerTon: number
   chalkWorkerCostPerTon: number
+  marketCostPerTon: number
   loadingCostPerTon: number
   foodCostPerTon: number
   supervisorCostPerTon: number

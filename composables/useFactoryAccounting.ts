@@ -112,6 +112,7 @@ export const defaultCostProfile: CostProfile = {
   chalkPricePerTon: 250,
   sandWorkerCostPerTon: 35,
   chalkWorkerCostPerTon: 40,
+  marketCostPerTon: 0,
   loadingCostPerTon: 10,
   foodCostPerTon: 10,
   supervisorCostPerTon: 10,
@@ -178,10 +179,35 @@ export const getDefaultSalePricePerTon = (profile: CostProfile, productType: Pro
 export const getWorkerCostPerTon = (profile: CostProfile, productType: ProductType) =>
   productType === 'Qum' ? profile.sandWorkerCostPerTon : profile.chalkWorkerCostPerTon
 
+export const getProductionCostBreakdown = (
+  profile: CostProfile,
+  productType: ProductType,
+  baggedOutputTons: number,
+  bulkOutputTons: number
+) => {
+  const normalizedBaggedOutputTons = Number(Math.max(baggedOutputTons, 0).toFixed(2))
+  const normalizedBulkOutputTons = normalizeBulkOutputTons(productType, Number(bulkOutputTons))
+  const baggedKilograms = getKilograms(normalizedBaggedOutputTons)
+  const bulkKilograms = getKilograms(normalizedBulkOutputTons)
+  const totalKilograms = baggedKilograms + bulkKilograms
+
+  return {
+    worker: roundAmount(totalKilograms * getWorkerCostPerTon(profile, productType)),
+    loading: roundAmount(baggedKilograms * profile.loadingCostPerTon),
+    market: roundAmount(totalKilograms * profile.marketCostPerTon),
+    food: roundAmount(totalKilograms * profile.foodCostPerTon),
+    supervisor: roundAmount(totalKilograms * profile.supervisorCostPerTon),
+    electricity: roundAmount(totalKilograms * profile.electricityCostPerTon),
+    stone: roundAmount(totalKilograms * profile.stoneCostPerTon),
+    bag: roundAmount(baggedKilograms * profile.bagCostPerTon)
+  }
+}
+
 export const getCostPerTon = (profile: CostProfile, productType: ProductType) =>
   Number(
     (
       getWorkerCostPerTon(profile, productType) +
+      profile.marketCostPerTon +
       profile.loadingCostPerTon +
       profile.foodCostPerTon +
       profile.supervisorCostPerTon +
@@ -195,6 +221,7 @@ export const getBulkCostPerTon = (profile: CostProfile, productType: ProductType
   Number(
     (
       getWorkerCostPerTon(profile, productType) +
+      profile.marketCostPerTon +
       profile.foodCostPerTon +
       profile.supervisorCostPerTon +
       profile.electricityCostPerTon +
@@ -224,6 +251,7 @@ export const getAverageProductionCostPerTon = (record: DailyFactoryRecord) => {
 const createComponentTotals = () => ({
   worker: 0,
   loading: 0,
+  market: 0,
   food: 0,
   supervisor: 0,
   electricity: 0,
@@ -232,20 +260,7 @@ const createComponentTotals = () => ({
 })
 
 const getDailyRecordCostBreakdown = (record: DailyFactoryRecord) => {
-  const baggedKilograms = getKilograms(record.baggedOutputTons)
-  const bulkKilograms = getKilograms(record.bulkOutputTons)
-  const totalKilograms = baggedKilograms + bulkKilograms
-  const workerCostPerKg = getWorkerCostPerTon(record, record.productType)
-
-  return {
-    worker: roundAmount(totalKilograms * workerCostPerKg),
-    loading: roundAmount(baggedKilograms * record.loadingCostPerTon),
-    food: roundAmount(totalKilograms * record.foodCostPerTon),
-    supervisor: roundAmount(totalKilograms * record.supervisorCostPerTon),
-    electricity: roundAmount(totalKilograms * record.electricityCostPerTon),
-    stone: roundAmount(totalKilograms * record.stoneCostPerTon),
-    bag: roundAmount(baggedKilograms * record.bagCostPerTon)
-  }
+  return getProductionCostBreakdown(record, record.productType, record.baggedOutputTons, record.bulkOutputTons)
 }
 
 const normalizeDailyRecord = (
@@ -490,6 +505,7 @@ const buildCostBreakdown = (profile: CostProfile) => {
   return [
     { label: 'Qum ishchi', value: profile.sandWorkerCostPerTon, color: '#16a34a' },
     { label: 'Mel ishchi', value: profile.chalkWorkerCostPerTon, color: '#15803d' },
+    { label: 'Bozorliq', value: profile.marketCostPerTon, color: '#7c2d12' },
     { label: 'Yuklash', value: profile.loadingCostPerTon, color: '#0f766e' },
     { label: 'Ovqat', value: profile.foodCostPerTon, color: '#f59e0b' },
     { label: 'Boshqaruv', value: profile.supervisorCostPerTon, color: '#f97316' },
@@ -1696,6 +1712,7 @@ export const useFactoryAccounting = () => {
 
       totals.worker += breakdown.worker
       totals.loading += breakdown.loading
+      totals.market += breakdown.market
       totals.food += breakdown.food
       totals.supervisor += breakdown.supervisor
       totals.electricity += breakdown.electricity
@@ -1967,6 +1984,7 @@ export const useFactoryAccounting = () => {
       productionComponentTotals: {
         worker: roundAmount(productionComponentTotals.worker),
         loading: roundAmount(productionComponentTotals.loading),
+        market: roundAmount(productionComponentTotals.market),
         food: roundAmount(productionComponentTotals.food),
         supervisor: roundAmount(productionComponentTotals.supervisor),
         electricity: roundAmount(productionComponentTotals.electricity),

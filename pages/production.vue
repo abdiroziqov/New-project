@@ -21,6 +21,14 @@ const { isAdmin } = useAuth()
 const { formatSom, formatTons } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
 const { t } = useUiLocale()
+const createFactories: FactoryName[] = ['Oybek', 'Jamshid']
+
+type DailyFactoryCreateState = {
+  productType: ProductType
+  baggedOutputTons: number
+  bulkOutputTons: number
+  notes: string
+}
 
 const createFormState = (): Omit<DailyFactoryRecord, 'id'> => ({
   date: latestDate.value,
@@ -36,12 +44,24 @@ const createFormState = (): Omit<DailyFactoryRecord, 'id'> => ({
   ...defaultCosts.value
 })
 
+const createFactoryState = (): DailyFactoryCreateState => ({
+  productType: 'Qum',
+  baggedOutputTons: 0,
+  bulkOutputTons: 0,
+  notes: ''
+})
+
 const filters = reactive({
   startDate: '',
   endDate: '',
   factory: ''
 })
 
+const createDate = ref(latestDate.value)
+const createForms = reactive<Record<FactoryName, DailyFactoryCreateState>>({
+  Oybek: createFactoryState(),
+  Jamshid: createFactoryState()
+})
 const form = reactive<Omit<DailyFactoryRecord, 'id'>>(createFormState())
 const modalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -108,6 +128,7 @@ const tableRows = computed<Record<string, unknown>[]>(() =>
 const costItems = computed(() => [
   { label: 'Qum ishchi', value: defaultCosts.value.sandWorkerCostPerTon },
   { label: 'Mel ishchi', value: defaultCosts.value.chalkWorkerCostPerTon },
+  { label: 'Bozorliq', value: defaultCosts.value.marketCostPerTon },
   { label: 'Ortib berish', value: defaultCosts.value.loadingCostPerTon },
   { label: 'Ovqat', value: defaultCosts.value.foodCostPerTon },
   { label: 'Boshqaruvchi', value: defaultCosts.value.supervisorCostPerTon },
@@ -115,6 +136,53 @@ const costItems = computed(() => [
   { label: 'Tosh', value: defaultCosts.value.stoneCostPerTon },
   { label: 'Qop', value: defaultCosts.value.bagCostPerTon }
 ])
+
+const getCreateFactoryState = (factory: FactoryName) => createForms[factory]
+const getCreateFactoryBulkAllowed = (factory: FactoryName) =>
+  isBulkAllowedForProduct(getCreateFactoryState(factory).productType)
+const getCreateFactoryOutputTons = (factory: FactoryName) =>
+  getOutputTons({
+    baggedOutputTons: Number(getCreateFactoryState(factory).baggedOutputTons),
+    bulkOutputTons: normalizeBulkOutputTons(
+      getCreateFactoryState(factory).productType,
+      Number(getCreateFactoryState(factory).bulkOutputTons)
+    )
+  })
+const getCreateFactoryUsedStoneTons = (factory: FactoryName) =>
+  getUsedStoneTons({
+    baggedOutputTons: Number(getCreateFactoryState(factory).baggedOutputTons),
+    bulkOutputTons: normalizeBulkOutputTons(
+      getCreateFactoryState(factory).productType,
+      Number(getCreateFactoryState(factory).bulkOutputTons)
+    )
+  })
+const getCreateFactoryBagCount = (factory: FactoryName) => getBagCount(Number(getCreateFactoryState(factory).baggedOutputTons))
+const getCreateFactoryBaggedCostPerTon = (factory: FactoryName) =>
+  getCostPerTon(defaultCosts.value, getCreateFactoryState(factory).productType)
+const getCreateFactoryBulkCostPerTon = (factory: FactoryName) =>
+  getBulkCostPerTon(defaultCosts.value, getCreateFactoryState(factory).productType)
+const getCreateFactoryBaggedTotalCost = (factory: FactoryName) =>
+  getSaleTotal(Number(getCreateFactoryState(factory).baggedOutputTons), getCreateFactoryBaggedCostPerTon(factory))
+const getCreateFactoryBulkTotalCost = (factory: FactoryName) =>
+  getSaleTotal(
+    normalizeBulkOutputTons(getCreateFactoryState(factory).productType, Number(getCreateFactoryState(factory).bulkOutputTons)),
+    getCreateFactoryBulkCostPerTon(factory)
+  )
+const getCreateFactoryCostBreakdown = (factory: FactoryName) =>
+  getProductionCostBreakdown(
+    defaultCosts.value,
+    getCreateFactoryState(factory).productType,
+    Number(getCreateFactoryState(factory).baggedOutputTons),
+    normalizeBulkOutputTons(getCreateFactoryState(factory).productType, Number(getCreateFactoryState(factory).bulkOutputTons))
+  )
+const getCreateFactoryTotalCost = (factory: FactoryName) =>
+  Number((getCreateFactoryBaggedTotalCost(factory) + getCreateFactoryBulkTotalCost(factory)).toFixed(2))
+const createSummary = computed(() => ({
+  totalOutputTons: createFactories.reduce((sum, factory) => sum + getCreateFactoryOutputTons(factory), 0),
+  totalUsedStoneTons: createFactories.reduce((sum, factory) => sum + getCreateFactoryUsedStoneTons(factory), 0),
+  totalBagCount: createFactories.reduce((sum, factory) => sum + getCreateFactoryBagCount(factory), 0),
+  totalCost: createFactories.reduce((sum, factory) => sum + getCreateFactoryTotalCost(factory), 0)
+}))
 
 const formBaggedCostPerTon = computed(() => getCostPerTon(defaultCosts.value, form.productType))
 const formBulkCostPerTon = computed(() => getBulkCostPerTon(defaultCosts.value, form.productType))
@@ -129,6 +197,14 @@ const formBaggedTotalCost = computed(() => getSaleTotal(Number(form.baggedOutput
 const formBulkTotalCost = computed(() =>
   getSaleTotal(normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons)), formBulkCostPerTon.value)
 )
+const formCostBreakdown = computed(() =>
+  getProductionCostBreakdown(
+    defaultCosts.value,
+    form.productType,
+    Number(form.baggedOutputTons),
+    normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons))
+  )
+)
 const formTotalCost = computed(() => Number((formBaggedTotalCost.value + formBulkTotalCost.value).toFixed(2)))
 const formUsedStoneTons = computed(() =>
   getUsedStoneTons({
@@ -137,6 +213,17 @@ const formUsedStoneTons = computed(() =>
   })
 )
 const formBagCount = computed(() => getBagCount(Number(form.baggedOutputTons)))
+
+const resetCreateForm = () => {
+  createDate.value = latestDate.value
+
+  createFactories.forEach((factory) => {
+    Object.assign(createForms[factory], createFactoryState())
+  })
+
+  editingId.value = null
+  formError.value = ''
+}
 
 const resetForm = () => {
   Object.assign(form, createFormState())
@@ -149,7 +236,7 @@ const openCreateModal = () => {
     return
   }
 
-  resetForm()
+  resetCreateForm()
   modalOpen.value = true
 }
 
@@ -181,6 +268,48 @@ const openEditModal = (row: Record<string, unknown>) => {
 
 const saveRecord = () => {
   if (!isAdmin.value) {
+    return
+  }
+
+  if (!editingId.value) {
+    if (!createDate.value) {
+      formError.value = 'Sanani kiriting.'
+      return
+    }
+
+    const payloads = createFactories
+      .map((factory) => {
+        const state = getCreateFactoryState(factory)
+        const outputTons = getCreateFactoryOutputTons(factory)
+
+        if (outputTons <= 0) {
+          return null
+        }
+
+        return {
+          date: createDate.value,
+          factory,
+          productType: state.productType,
+          incomingStoneTons: getCreateFactoryUsedStoneTons(factory),
+          usedStoneTons: getCreateFactoryUsedStoneTons(factory),
+          baggedOutputTons: Number(state.baggedOutputTons),
+          bulkOutputTons: normalizeBulkOutputTons(state.productType, Number(state.bulkOutputTons)),
+          newBagCount: getCreateFactoryBagCount(factory),
+          oldBagCount: 0,
+          notes: state.notes.trim(),
+          ...defaultCosts.value
+        } satisfies Omit<DailyFactoryRecord, 'id'>
+      })
+      .filter((payload): payload is Omit<DailyFactoryRecord, 'id'> => Boolean(payload))
+
+    if (!payloads.length) {
+      formError.value = 'Kamida bitta zavod uchun mahsulot miqdorini kiriting.'
+      return
+    }
+
+    payloads.forEach((payload) => addDailyRecord(payload))
+    modalOpen.value = false
+    resetCreateForm()
     return
   }
 
@@ -270,6 +399,24 @@ watch(
     }
   }
 )
+
+watch(
+  () => createForms.Oybek.productType,
+  (productType) => {
+    if (!isBulkAllowedForProduct(productType)) {
+      createForms.Oybek.bulkOutputTons = 0
+    }
+  }
+)
+
+watch(
+  () => createForms.Jamshid.productType,
+  (productType) => {
+    if (!isBulkAllowedForProduct(productType)) {
+      createForms.Jamshid.bulkOutputTons = 0
+    }
+  }
+)
 </script>
 
 <template>
@@ -338,7 +485,7 @@ watch(
     </AppTable>
   </section>
 
-  <AppModal :open="modalOpen" :title="editingId ? 'Kunlik yozuvni tahrirlash' : 'Kunlik yozuv qo`shish'" size="xl" @close="modalOpen = false">
+  <AppModal :open="modalOpen" :title="editingId ? 'Kunlik yozuvni tahrirlash' : 'Kunlik yozuvlarni qo`shish'" size="xl" @close="modalOpen = false">
     <div class="space-y-6">
       <section>
         <div class="mb-3 flex items-center justify-between">
@@ -348,40 +495,138 @@ watch(
           </NuxtLink>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-4">
-          <AppInput v-model="form.date" type="date" label="Sana" required />
-          <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" required />
-          <AppSelect
-            v-model="form.productType"
-            label="Mahsulot turi"
-            :options="productTypes.map((item) => ({ label: item, value: item }))"
-            required
-          />
-          <AppInput v-model="form.baggedOutputTons" type="number" min="0" step="0.01" label="Qoplik mahsulot (t)" />
-          <AppInput
-            v-model="form.bulkOutputTons"
-            type="number"
-            min="0"
-            step="0.01"
-            label="Rasipnoy mahsulot (t)"
-            :disabled="!formBulkAllowed"
-            :placeholder="formBulkAllowed ? '' : 'Mel faqat qoplik bo`ladi'"
-          />
-          <div class="rounded-2xl bg-slate-50 px-4 py-3">
-            <p class="text-xs text-slate-500">Avtomatik tosh</p>
-            <p class="mt-1 text-base font-semibold text-slate-900">{{ formatTons(formUsedStoneTons) }}</p>
+        <template v-if="editingId">
+          <div class="grid gap-4 md:grid-cols-4">
+            <AppInput v-model="form.date" type="date" label="Sana" required />
+            <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" required />
+            <AppSelect
+              v-model="form.productType"
+              label="Mahsulot turi"
+              :options="productTypes.map((item) => ({ label: item, value: item }))"
+              required
+            />
+            <AppInput v-model="form.baggedOutputTons" type="number" min="0" step="0.01" label="Qoplik mahsulot (t)" />
+            <AppInput
+              v-model="form.bulkOutputTons"
+              type="number"
+              min="0"
+              step="0.01"
+              label="Rasipnoy mahsulot (t)"
+              :disabled="!formBulkAllowed"
+              :placeholder="formBulkAllowed ? '' : 'Mel faqat qoplik bo`ladi'"
+            />
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500">Avtomatik tosh</p>
+              <p class="mt-1 text-base font-semibold text-slate-900">{{ formatTons(formUsedStoneTons) }}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500">Avtomatik qop</p>
+              <p class="mt-1 text-base font-semibold text-slate-900">{{ formBagCount }} dona</p>
+            </div>
           </div>
-          <div class="rounded-2xl bg-slate-50 px-4 py-3">
-            <p class="text-xs text-slate-500">Avtomatik qop</p>
-            <p class="mt-1 text-base font-semibold text-slate-900">{{ formBagCount }} dona</p>
+        </template>
+
+        <template v-else>
+          <div class="grid gap-4 md:grid-cols-[0.7fr_1.3fr]">
+            <AppInput v-model="createDate" type="date" label="Sana" required />
+            <div class="rounded-2xl bg-slate-50 p-4">
+              <p class="text-xs uppercase tracking-wide text-slate-500">Jami preview</p>
+              <div class="mt-3 grid gap-3 sm:grid-cols-4">
+                <div>
+                  <p class="text-xs text-slate-500">Mahsulot</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatTons(createSummary.totalOutputTons) }}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-slate-500">Tosh sarfi</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatTons(createSummary.totalUsedStoneTons) }}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-slate-500">Qop</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ createSummary.totalBagCount }} dona</p>
+                </div>
+                <div>
+                  <p class="text-xs text-slate-500">Jami tannarx</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(createSummary.totalCost) }}</p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+
+          <div class="mt-4 grid gap-4 xl:grid-cols-2">
+            <section
+              v-for="factory in createFactories"
+              :key="factory"
+              class="rounded-3xl border border-slate-200 bg-slate-50/70 p-4"
+            >
+              <div class="mb-4 flex items-center justify-between">
+                <div>
+                  <h4 class="text-base font-semibold text-slate-900">{{ factory }}</h4>
+                  <p class="text-xs text-slate-500">Shu zavod bo‘yicha kunlik ishlab chiqarish</p>
+                </div>
+                <span class="data-chip">Alohida record saqlanadi</span>
+              </div>
+
+              <div class="grid gap-4 md:grid-cols-2">
+                <AppSelect
+                  v-model="createForms[factory].productType"
+                  label="Mahsulot turi"
+                  :options="productTypes.map((item) => ({ label: item, value: item }))"
+                />
+                <AppInput
+                  v-model="createForms[factory].baggedOutputTons"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  label="Qoplik mahsulot (t)"
+                />
+                <AppInput
+                  v-model="createForms[factory].bulkOutputTons"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  label="Rasipnoy mahsulot (t)"
+                  :disabled="!getCreateFactoryBulkAllowed(factory)"
+                  :placeholder="getCreateFactoryBulkAllowed(factory) ? '' : 'Mel faqat qoplik bo`ladi'"
+                />
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Avtomatik tosh</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatTons(getCreateFactoryUsedStoneTons(factory)) }}</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Avtomatik qop</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ getCreateFactoryBagCount(factory) }} dona</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Jami tannarx</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(getCreateFactoryTotalCost(factory)) }}</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Ishchi puli</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(getCreateFactoryCostBreakdown(factory).worker) }}</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Ortib berish</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(getCreateFactoryCostBreakdown(factory).loading) }}</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Bozorliq</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(getCreateFactoryCostBreakdown(factory).market) }}</p>
+                </div>
+                <div class="md:col-span-2">
+                  <AppInput v-model="createForms[factory].notes" label="Izoh" placeholder="Kunlik eslatma yoki izoh" />
+                </div>
+              </div>
+            </section>
+          </div>
+        </template>
       </section>
 
       <section>
         <div class="mb-3 flex items-center justify-between">
           <h3 class="text-sm font-semibold text-slate-900">Avtomatik tannarx</h3>
-          <span class="data-chip">{{ formBulkAllowed ? "Rasipnoyda ortib berish va qop yo'q" : 'Mel faqat qoplik bo`ladi' }}</span>
+          <span class="data-chip">
+            {{ editingId ? (formBulkAllowed ? "Rasipnoyda ortib berish va qop yo'q" : 'Mel faqat qoplik bo`ladi') : "Har zavod blokida mahsulotga qarab hisoblanadi" }}
+          </span>
         </div>
         <p class="mb-4 text-xs text-slate-500">
           Bu narxlar `Chiqimlar` sahifasidagi default sozlamalardan olinadi. Narx o'zgarsa kunlik hisob avtomatik qayta hisoblanadi.
@@ -397,7 +642,7 @@ watch(
           </div>
         </div>
 
-        <div class="mt-4 grid gap-3 md:grid-cols-2">
+        <div v-if="editingId" class="mt-4 grid gap-3 md:grid-cols-2">
           <div class="rounded-2xl bg-slate-50 px-4 py-3">
             <p class="text-xs text-slate-500">{{ form.productType }} qoplik 1 kg</p>
             <p class="mt-1 text-lg font-semibold text-slate-900">{{ formatSom(formBaggedCostPerTon) }}</p>
@@ -411,9 +656,13 @@ watch(
             </p>
           </div>
         </div>
+
+        <div v-else class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          Create holatda har bir zavod kartasi ichida mahsulot turiga qarab qoplik, rasipnoy va jami tannarx alohida hisoblanadi.
+        </div>
       </section>
 
-      <section class="grid gap-4 md:grid-cols-[1.4fr_0.6fr]">
+      <section v-if="editingId" class="grid gap-4 md:grid-cols-[1.4fr_0.6fr]">
         <AppInput v-model="form.notes" label="Izoh" placeholder="Kunlik eslatma yoki izoh" />
         <div class="rounded-2xl bg-slate-50 p-4">
           <p class="text-xs uppercase tracking-wide text-slate-500">Hisob preview</p>
@@ -439,6 +688,18 @@ watch(
               <strong class="text-slate-900">{{ formBulkAllowed ? formatSom(formBulkTotalCost) : 'Yo`q' }}</strong>
             </div>
             <div class="flex items-center justify-between">
+              <span class="text-slate-500">Ishchi puli</span>
+              <strong class="text-slate-900">{{ formatSom(formCostBreakdown.worker) }}</strong>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Ortib berish</span>
+              <strong class="text-slate-900">{{ formatSom(formCostBreakdown.loading) }}</strong>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Bozorliq</span>
+              <strong class="text-slate-900">{{ formatSom(formCostBreakdown.market) }}</strong>
+            </div>
+            <div class="flex items-center justify-between">
               <span class="text-slate-500">Jami tannarx</span>
               <strong class="text-slate-900">{{ formatSom(formTotalCost) }}</strong>
             </div>
@@ -455,7 +716,7 @@ watch(
       <div class="flex justify-end gap-2">
         <button type="button" class="btn-secondary" @click="modalOpen = false">{{ t('Bekor qilish') }}</button>
         <button type="button" class="btn-primary" @click="saveRecord">
-          {{ editingId ? t('Saqlash') : t("Qo`shish") }}
+          {{ editingId ? t('Saqlash') : t('Ikkala zavodni saqlash') }}
         </button>
       </div>
     </template>

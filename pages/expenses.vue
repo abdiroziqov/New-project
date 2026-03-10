@@ -224,6 +224,7 @@ const saveDefaultCosts = () => {
     chalkPricePerTon: Number(costForm.chalkPricePerTon),
     sandWorkerCostPerTon: Number(costForm.sandWorkerCostPerTon),
     chalkWorkerCostPerTon: Number(costForm.chalkWorkerCostPerTon),
+    marketCostPerTon: Number(costForm.marketCostPerTon),
     loadingCostPerTon: Number(costForm.loadingCostPerTon),
     foodCostPerTon: Number(costForm.foodCostPerTon),
     supervisorCostPerTon: Number(costForm.supervisorCostPerTon),
@@ -346,9 +347,8 @@ const resetCostForm = () => {
       </div>
 
       <div class="mb-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        `240 / 250` sotuv narxi `/kg`. Tannarxga kirmaydi. Qoplik tannarx:
-        `Qum = 185`, `Mel = 190`.
-        `Mel`da rasipnoy yo`q. `Qum` rasipnoyda `qop` va `yuklash` hisoblanmaydi.
+        `240 / 250` sotuv narxi `/kg`. Tannarxga kirmaydi. Qoplik tannarxida `ishchi + bozorliq + ortib berish + ovqat + boshqaruvchi + svet + tosh + qop`
+        hisoblanadi. Rasipnoyda esa `ortib berish` va `qop` yo`q.
       </div>
 
       <div class="grid gap-3 md:grid-cols-2">
@@ -356,6 +356,7 @@ const resetCostForm = () => {
         <AppInput v-model="costForm.chalkPricePerTon" type="number" min="0" step="0.01" label="Mel sotuv narxi / kg" :disabled="!isAdmin" />
         <AppInput v-model="costForm.sandWorkerCostPerTon" type="number" min="0" step="0.01" label="Qum ishchi" :disabled="!isAdmin" />
         <AppInput v-model="costForm.chalkWorkerCostPerTon" type="number" min="0" step="0.01" label="Mel ishchi" :disabled="!isAdmin" />
+        <AppInput v-model="costForm.marketCostPerTon" type="number" min="0" step="0.01" label="Bozorliq" :disabled="!isAdmin" />
         <AppInput v-model="costForm.loadingCostPerTon" type="number" min="0" step="0.01" label="Ortib berish" :disabled="!isAdmin" />
         <AppInput v-model="costForm.foodCostPerTon" type="number" min="0" step="0.01" label="Ovqat" :disabled="!isAdmin" />
         <AppInput v-model="costForm.supervisorCostPerTon" type="number" min="0" step="0.01" label="Boshqaruvchi" :disabled="!isAdmin" />
@@ -372,7 +373,7 @@ const resetCostForm = () => {
       <div class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
         Formula mahsulot turiga qarab ishlaydi. `Qum` uchun ishchi `35`, `Mel` uchun ishchi `40`.
         `Qum/Mel sotuv narxi / kg` saqlanadi, lekin tannarxga qo'shilmaydi.
-        Rasipnoyda `ortib berish` va `qop` hisobga olinmaydi.
+        `Bozorliq` ishlab chiqarilgan jami mahsulotga qo'shiladi. Rasipnoyda `ortib berish` va `qop` hisobga olinmaydi.
       </div>
     </article>
   </section>
