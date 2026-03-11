@@ -341,6 +341,7 @@ watch(
         label="Klient"
         :options="clientOptions"
         :translate-options="false"
+        :searchable="true"
         placeholder="Klientni tanlang"
       />
       <AppInput v-model="clientAdvanceForm.amount" type="number" min="0" step="0.01" label="Summa" />
@@ -397,6 +398,7 @@ watch(
           label="Klient"
           :options="clientOptions"
           :translate-options="false"
+          :searchable="true"
           placeholder="Klientni tanlang"
         />
         <AppSelect

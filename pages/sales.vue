@@ -580,7 +580,7 @@ watch(
           ]"
           placeholder="Hammasi"
         />
-        <AppSelect v-model="filters.clientName" label="Klient" :options="filterClientOptions" :translate-options="false" placeholder="Hamma klient" />
+        <AppSelect v-model="filters.clientName" label="Klient" :options="filterClientOptions" :translate-options="false" :searchable="true" placeholder="Hamma klient" />
       </div>
     </article>
 
@@ -644,7 +644,7 @@ watch(
       <AppInput v-model="form.time" type="time" label="Soat" />
 
       <div class="md:col-span-2 grid gap-3 md:grid-cols-[1fr_auto]">
-        <AppSelect v-model="form.clientName" label="Klient" :options="clientSelectOptions" :translate-options="false" placeholder="Klientni tanlang" required />
+        <AppSelect v-model="form.clientName" label="Klient" :options="clientSelectOptions" :translate-options="false" :searchable="true" placeholder="Klientni tanlang" required />
         <div class="flex items-end">
           <NuxtLink to="/users" class="btn-secondary w-full">{{ t("Klient qo'shish") }}</NuxtLink>
         </div>

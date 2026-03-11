@@ -34,11 +34,13 @@ const { downloadWorkbook } = useExcelExport()
 const { printWorkbook } = usePdfExport()
 const { t } = useUiLocale()
 
+const getVehicleDefaultTons = (vehicleType: VehicleType) => (vehicleType === 'Howo' ? 28 : 13)
+
 const createFormState = (): IncomingLoadFormState => ({
   date: latestDate.value,
   factory: '',
   vehicleType: 'Howo',
-  tons: 0,
+  tons: getVehicleDefaultTons('Howo'),
   supplier: '',
   totalAmount: 0,
   paidAmount: 0,
@@ -164,6 +166,17 @@ const formBalanceType = computed<BalanceType>(() => {
   return 'yopilgan'
 })
 const formPaymentStatus = computed<PaymentStatus>(() => getPaymentStatus(formTotalAmount.value, Number(form.paidAmount || 0)))
+
+watch(
+  () => form.vehicleType,
+  (vehicleType, previousVehicleType) => {
+    const previousDefault = previousVehicleType ? getVehicleDefaultTons(previousVehicleType) : 0
+
+    if (Number(form.tons) <= 0 || Number(form.tons) === previousDefault) {
+      form.tons = getVehicleDefaultTons(vehicleType)
+    }
+  }
+)
 
 const supplierProfile = computed(() => getSupplierProfile(selectedSupplierName.value))
 const supplierSummary = computed(() => supplierProfile.value.summary)

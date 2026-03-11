@@ -187,10 +187,14 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
           </div>
         </div>
 
-        <div class="grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
+        <div class="grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
           <div class="rounded-2xl bg-sky-50 px-4 py-3">
             <p class="text-xs uppercase tracking-wide text-sky-700">{{ t('Bugungi kirim') }}</p>
-            <p class="mt-1 text-xl font-bold text-slate-900">{{ formatTons(todaySummary.totalIncomingTons) }}</p>
+            <p class="mt-1 text-xl font-bold text-slate-900">{{ formatTons(todaySummary.totalOutputTons) }}</p>
+          </div>
+          <div class="rounded-2xl bg-slate-100 px-4 py-3">
+            <p class="text-xs uppercase tracking-wide text-slate-700">{{ t('Bugungi tosh sarfi') }}</p>
+            <p class="mt-1 text-xl font-bold text-slate-900">{{ formatTons(todaySummary.totalUsedStoneTons) }}</p>
           </div>
           <div class="rounded-2xl bg-amber-50 px-4 py-3">
             <p class="text-xs uppercase tracking-wide text-amber-700">{{ t('Bugungi sotuv') }}</p>

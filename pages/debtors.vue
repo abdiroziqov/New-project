@@ -802,7 +802,7 @@ const clearFilters = () => {
     </article>
   </section>
 
-  <section class="panel p-5">
+  <section v-if="false" class="panel p-5">
     <header class="mb-4">
       <h3 class="text-base font-semibold text-slate-900">{{ t('Aktiv Telegram eslatmalar') }}</h3>
       <p class="text-xs text-slate-500">Schedule saqlanadi. Bot token va klient chat id kiritilsa server o'zi yuboradi.</p>

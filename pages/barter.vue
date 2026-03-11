@@ -337,6 +337,7 @@ const applySameNameCandidate = (name: string, maxOffset: number) => {
         label="Klient"
         :options="clientOptions"
         :translate-options="false"
+        :searchable="true"
         placeholder="Klientni tanlang"
       />
       <AppInput v-model="createForm.amount" type="number" min="0" step="0.01" label="Summa" />
@@ -440,6 +441,7 @@ const applySameNameCandidate = (name: string, maxOffset: number) => {
         label="Klient"
         :options="clientOptions"
         :translate-options="false"
+        :searchable="true"
         placeholder="Klientni tanlang"
       />
       <div class="md:col-span-2">

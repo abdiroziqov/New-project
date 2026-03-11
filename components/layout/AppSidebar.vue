@@ -36,12 +36,12 @@ const isActive = (path: string) => {
 
   <aside
     :class="[
-      'fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white transition-transform lg:z-20',
+      'fixed inset-y-0 left-0 z-40 flex h-screen w-64 flex-col overflow-hidden border-r border-slate-200 bg-white transition-transform lg:z-20',
       open ? 'translate-x-0' : '-translate-x-full',
       desktopOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full'
     ]"
   >
-    <div class="border-b border-slate-200 px-4 py-4">
+    <div class="shrink-0 border-b border-slate-200 px-4 py-4">
       <NuxtLink to="/dashboard" class="block rounded-xl transition hover:bg-slate-50" @click="emit('close')">
         <p class="text-[10px] font-semibold uppercase tracking-[0.34em] text-brand-600">{{ t('Korxona') }}</p>
         <h2 class="mt-1 text-lg font-black tracking-tight text-slate-900">{{ t(runtimeConfig.public.appName) }}</h2>
@@ -49,7 +49,7 @@ const isActive = (path: string) => {
       </NuxtLink>
     </div>
 
-    <nav class="space-y-4 p-3">
+    <nav class="flex-1 space-y-4 overflow-y-auto p-3 pb-6">
       <div class="space-y-1">
         <NuxtLink
           v-for="item in mainNavigation"
@@ -87,7 +87,7 @@ const isActive = (path: string) => {
       </div>
     </nav>
 
-    <div class="absolute inset-x-0 bottom-0 border-t border-slate-200 p-3 text-xs text-slate-500">
+    <div class="shrink-0 border-t border-slate-200 p-3 text-xs text-slate-500">
       {{ t('Login') }}: <span class="font-semibold text-slate-700">{{ t(String(user?.role ?? '-')) }}</span>
     </div>
   </aside>

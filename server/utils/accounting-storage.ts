@@ -344,7 +344,7 @@ const normalizeExpenseRecord = (record: unknown): OperationalExpense => {
   return {
     id: asString(source.id, createId('exp')),
     date: asString(source.date, todayIso()),
-    factory: isFactory(source.factory) ? source.factory : 'Oybek',
+    factory: isFactory(source.factory) ? source.factory : '',
     category: isExpenseCategory(source.category) ? source.category : 'Ishchi',
     description: asString(source.description),
     amount: asNumber(source.amount),

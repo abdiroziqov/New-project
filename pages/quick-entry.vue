@@ -36,6 +36,8 @@ const { formatSom, formatTons, formatDate } = useFormatting()
 const { getSupplierInputClass } = useSupplierHighlight()
 const { t } = useUiLocale()
 
+const getVehicleDefaultTons = (vehicleType: VehicleType) => (vehicleType === 'Howo' ? 28 : 13)
+
 type IncomingLoadQuickForm = {
   date: string
   factory: FactoryName | ''
@@ -60,7 +62,7 @@ const loadForm = reactive<IncomingLoadQuickForm>({
   date: latestDate.value,
   factory: '',
   vehicleType: 'Howo',
-  tons: 0,
+  tons: getVehicleDefaultTons('Howo'),
   supplier: '',
   totalAmount: 0,
   paidAmount: 0,
@@ -180,7 +182,7 @@ const saveLoad = () => {
     date: latestDate.value,
     factory: '',
     vehicleType: 'Howo',
-    tons: 0,
+    tons: getVehicleDefaultTons('Howo'),
     supplier: '',
     totalAmount: 0,
     paidAmount: 0,
@@ -264,6 +266,17 @@ const loadPreviewTotal = computed(() => Number(loadForm.totalAmount || 0))
 const loadPreviewPricePerTon = computed(() => getLoadPricePerTon(Number(loadForm.tons), loadPreviewTotal.value))
 const loadPreviewDebt = computed(() => getRemainingAmount(loadPreviewTotal.value, Number(loadForm.paidAmount || 0)))
 const loadPreviewAdvance = computed(() => getLoadAdvanceAmount(loadPreviewTotal.value, Number(loadForm.paidAmount || 0)))
+
+watch(
+  () => loadForm.vehicleType,
+  (vehicleType, previousVehicleType) => {
+    const previousDefault = previousVehicleType ? getVehicleDefaultTons(previousVehicleType) : 0
+
+    if (Number(loadForm.tons) <= 0 || Number(loadForm.tons) === previousDefault) {
+      loadForm.tons = getVehicleDefaultTons(vehicleType)
+    }
+  }
+)
 const matchedSaleClients = computed(() => getClientSuggestions(saleForm.clientName, 6))
 const activeSaleClientProfile = computed(() => getClientProfile(saleForm.clientName))
 const activeSaleClientSummary = computed(() => activeSaleClientProfile.value.summary)
@@ -502,6 +515,7 @@ watch(
             label="Klient"
             :options="clientOptions"
             :translate-options="false"
+            :searchable="true"
             placeholder="Klientni tanlang"
           />
 

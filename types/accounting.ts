@@ -147,7 +147,7 @@ export interface ClientSummary {
 export interface OperationalExpense {
   id: string
   date: string
-  factory: FactoryName
+  factory: FactoryName | ''
   category: ExpenseCategory
   description: string
   amount: number

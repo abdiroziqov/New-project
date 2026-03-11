@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CostProfile, ExpenseCategory, OperationalExpense, PaymentMethod } from '~/types/accounting'
+import type { CostProfile, ExpenseCategory, FactoryName, OperationalExpense, PaymentMethod } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
 
 definePageMeta({
@@ -17,7 +17,8 @@ const {
   updateExpense,
   removeExpense,
   updateDefaultCosts,
-  getDefaultSalePricePerTon
+  getDefaultSalePricePerTon,
+  buildSummary
 } = useFactoryAccounting()
 const { isAdmin } = useAuth()
 const { formatSom } = useFormatting()
@@ -26,7 +27,7 @@ const { t } = useUiLocale()
 
 const createExpenseFormState = (): Omit<OperationalExpense, 'id'> => ({
   date: latestDate.value,
-  factory: 'Oybek',
+  factory: '',
   category: 'Ishchi',
   description: '',
   amount: 0,
@@ -52,6 +53,30 @@ const formError = ref('')
 
 const deleteDialogOpen = ref(false)
 const selectedExpense = ref<OperationalExpense | null>(null)
+const previousWorkerSuggestion = ref(0)
+
+const getMonthStart = (date: string) => `${date.slice(0, 7)}-01`
+const getWorkerSuggestion = (date: string, factory: FactoryName | '') => {
+  if (!date || !factory) {
+    return 0
+  }
+
+  if (factory === 'Jamshid') {
+    const dailySummary = buildSummary(date, date)
+    return dailySummary.workerPaymentByFactory.find((item) => item.factory === factory)?.paidNow ?? 0
+  }
+
+  const monthlySummary = buildSummary(getMonthStart(date), date)
+  return monthlySummary.workerPaymentByFactory.find((item) => item.factory === factory)?.accrued ?? 0
+}
+
+const workerExpenseSuggestion = computed(() => {
+  if (expenseForm.category !== 'Ishchi') {
+    return 0
+  }
+
+  return getWorkerSuggestion(expenseForm.date, expenseForm.factory as FactoryName | '')
+})
 
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -117,6 +142,7 @@ const openCreateModal = () => {
   }
 
   resetExpenseForm()
+  previousWorkerSuggestion.value = 0
   modalOpen.value = true
 }
 
@@ -138,6 +164,7 @@ const openEditModal = (row: Record<string, unknown>) => {
   })
 
   editingId.value = record.id
+  previousWorkerSuggestion.value = 0
   formError.value = ''
   modalOpen.value = true
 }
@@ -159,6 +186,11 @@ const saveExpense = () => {
 
   if (!payload.date || !payload.description) {
     formError.value = 'Sana va tavsifni kiriting.'
+    return
+  }
+
+  if (payload.category === 'Ishchi' && !payload.factory) {
+    formError.value = 'Ishchi chiqimi uchun zavodni tanlang.'
     return
   }
 
@@ -237,6 +269,25 @@ const saveDefaultCosts = () => {
 const resetCostForm = () => {
   Object.assign(costForm, defaultCosts.value)
 }
+
+watch(
+  () => [expenseForm.category, expenseForm.factory, expenseForm.date] as const,
+  () => {
+    if (expenseForm.category !== 'Ishchi') {
+      previousWorkerSuggestion.value = 0
+      return
+    }
+
+    const suggestion = workerExpenseSuggestion.value
+
+    if (Number(expenseForm.amount) <= 0 || Number(expenseForm.amount) === previousWorkerSuggestion.value) {
+      expenseForm.amount = suggestion
+    }
+
+    previousWorkerSuggestion.value = suggestion
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -382,6 +433,12 @@ const resetCostForm = () => {
     <div class="grid gap-4 md:grid-cols-2">
       <AppInput v-model="expenseForm.date" type="date" label="Sana" required />
       <AppSelect
+        v-model="expenseForm.factory"
+        label="Zavod"
+        :options="factoryOptions"
+        placeholder="Umumiy chiqim"
+      />
+      <AppSelect
         v-model="expenseForm.category"
         label="Kategoriya"
         :options="expenseCategories.map((item) => ({ label: item, value: item }))"
@@ -398,6 +455,19 @@ const resetCostForm = () => {
       <div class="md:col-span-2">
         <AppInput v-model="expenseForm.notes" label="Izoh" placeholder="Qo'shimcha izoh" />
       </div>
+    </div>
+
+    <div
+      v-if="expenseForm.category === 'Ishchi'"
+      class="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
+    >
+      <p class="font-semibold">Ishchi puli tavsiyasi</p>
+      <p class="mt-1">
+        {{ expenseForm.factory ? `${expenseForm.factory} uchun berilishi kerak: ${formatSom(workerExpenseSuggestion)}` : 'Ishchi uchun zavodni tanlang.' }}
+      </p>
+      <p class="mt-1 text-xs text-sky-700">
+        {{ expenseForm.factory === 'Jamshid' ? 'Jamshid har kunlik hisob bo`yicha olinadi.' : expenseForm.factory === 'Oybek' ? 'Oybek joriy oy yig`ilgan oyligi bo`yicha olinadi.' : '' }}
+      </p>
     </div>
 
     <p v-if="formError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
