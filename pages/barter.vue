@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BarterRecord } from '~/types/accounting'
+import type { BarterRecord, ProductType } from '~/types/accounting'
 import type { TableColumn } from '~/types/report'
 
 definePageMeta({
@@ -12,24 +12,31 @@ const {
   clientSummaries,
   supplierContacts,
   clientOptions,
+  defaultCosts,
+  productTypes,
   latestDate,
   canManageAccounting,
   addBarterRecord,
   updateBarterRecord,
   removeBarterRecord,
+  getDefaultSalePricePerTon,
   getSupplierProfile,
   getClientProfile
 } = useFactoryAccounting()
-const { formatSom } = useFormatting()
+const { formatSom, formatTons } = useFormatting()
 const { t } = useUiLocale()
 
 const normalizePartyName = (value: string) => value.trim().toLowerCase()
+const getBarterAmount = (tons: number, pricePerTon: number) => Number((Math.max(tons, 0) * 1000 * Math.max(pricePerTon, 0)).toFixed(2))
+const getInitialPrice = (productName: ProductType) => getDefaultSalePricePerTon(defaultCosts.value, productName)
 
 const createForm = reactive({
   date: latestDate.value,
   supplierName: '',
   clientName: '',
-  amount: 0,
+  productName: 'Qum' as ProductType,
+  tons: 0,
+  pricePerTon: getInitialPrice('Qum'),
   notes: ''
 })
 
@@ -38,7 +45,9 @@ const editForm = reactive({
   date: latestDate.value,
   supplierName: '',
   clientName: '',
-  amount: 0,
+  productName: 'Qum' as ProductType,
+  tons: 0,
+  pricePerTon: getInitialPrice('Qum'),
   notes: ''
 })
 
@@ -47,11 +56,16 @@ const editError = ref('')
 const selectedRecord = ref<BarterRecord | null>(null)
 const editModalOpen = ref(false)
 const deleteDialogOpen = ref(false)
+const previousCreateDefaultPrice = ref(getInitialPrice('Qum'))
+const previousEditDefaultPrice = ref(getInitialPrice('Qum'))
 
 const historyColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
   { key: 'supplierName', label: "Ta'minotchi", headerClass: 'font-bold text-brand-700', cellClass: 'font-bold text-brand-700' },
   { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700', cellClass: 'font-bold text-brand-700' },
+  { key: 'productName', label: 'Mahsulot' },
+  { key: 'tons', label: 'Tonna', align: 'right' },
+  { key: 'pricePerTon', label: 'Narx / kg', align: 'right' },
   { key: 'amount', label: 'Summa', align: 'right' },
   { key: 'notes', label: 'Izoh' },
   { key: 'actions', label: 'Amal', align: 'right' }
@@ -83,6 +97,8 @@ const historyRows = computed<Record<string, unknown>[]>(() =>
     .sort((left, right) => right.date.localeCompare(left.date))
     .map((record) => ({
       ...record,
+      tons: record.tons,
+      pricePerTon: record.pricePerTon,
       actions: record.id
     }))
 )
@@ -164,17 +180,22 @@ const getAvailableClientDebt = (clientName: string, currentRecord: BarterRecord 
 const createSupplierAvailable = computed(() => getAvailableSupplierDebt(createForm.supplierName))
 const createClientAvailable = computed(() => getAvailableClientDebt(createForm.clientName))
 const createMaxAmount = computed(() => Math.min(createSupplierAvailable.value, createClientAvailable.value))
+const createAmount = computed(() => getBarterAmount(Number(createForm.tons), Number(createForm.pricePerTon)))
 
 const currentEditRecord = computed(() => barterRecords.value.find((record) => record.id === editForm.id) ?? null)
 const editSupplierAvailable = computed(() => getAvailableSupplierDebt(editForm.supplierName, currentEditRecord.value))
 const editClientAvailable = computed(() => getAvailableClientDebt(editForm.clientName, currentEditRecord.value))
 const editMaxAmount = computed(() => Math.min(editSupplierAvailable.value, editClientAvailable.value))
+const editAmount = computed(() => getBarterAmount(Number(editForm.tons), Number(editForm.pricePerTon)))
 
 const resetCreateForm = () => {
   createForm.date = latestDate.value
   createForm.supplierName = ''
   createForm.clientName = ''
-  createForm.amount = 0
+  createForm.productName = 'Qum'
+  createForm.tons = 0
+  createForm.pricePerTon = getInitialPrice('Qum')
+  previousCreateDefaultPrice.value = getInitialPrice('Qum')
   createForm.notes = ''
   formError.value = ''
 }
@@ -185,7 +206,10 @@ const closeEditModal = () => {
   editForm.date = latestDate.value
   editForm.supplierName = ''
   editForm.clientName = ''
-  editForm.amount = 0
+  editForm.productName = 'Qum'
+  editForm.tons = 0
+  editForm.pricePerTon = getInitialPrice('Qum')
+  previousEditDefaultPrice.value = getInitialPrice('Qum')
   editForm.notes = ''
   editError.value = ''
 }
@@ -198,8 +222,8 @@ const saveCreate = () => {
     return
   }
 
-  if (Number(createForm.amount) <= 0) {
-    formError.value = 'Summa 0 dan katta bo`lishi kerak.'
+  if (Number(createForm.tons) <= 0 || Number(createForm.pricePerTon) <= 0) {
+    formError.value = 'Mahsulot, tonna va narxni to`g`ri kiriting.'
     return
   }
 
@@ -208,7 +232,7 @@ const saveCreate = () => {
     return
   }
 
-  if (Number(createForm.amount) > createMaxAmount.value) {
+  if (createAmount.value > createMaxAmount.value) {
     formError.value = `Maksimal yopiladigan summa: ${formatSom(createMaxAmount.value)}`
     return
   }
@@ -217,7 +241,10 @@ const saveCreate = () => {
     date: createForm.date,
     supplierName: createForm.supplierName,
     clientName: createForm.clientName,
-    amount: Number(createForm.amount),
+    productName: createForm.productName,
+    tons: Number(createForm.tons),
+    pricePerTon: Number(createForm.pricePerTon),
+    amount: createAmount.value,
     notes: createForm.notes.trim()
   })
 
@@ -231,7 +258,10 @@ const openEditModal = (row: Record<string, unknown>) => {
   editForm.date = record.date
   editForm.supplierName = record.supplierName
   editForm.clientName = record.clientName
-  editForm.amount = record.amount
+  editForm.productName = record.productName
+  editForm.tons = record.tons
+  editForm.pricePerTon = record.pricePerTon
+  previousEditDefaultPrice.value = getInitialPrice(record.productName)
   editForm.notes = record.notes
   editError.value = ''
   editModalOpen.value = true
@@ -245,8 +275,8 @@ const saveEdit = () => {
     return
   }
 
-  if (Number(editForm.amount) <= 0) {
-    editError.value = 'Summa 0 dan katta bo`lishi kerak.'
+  if (Number(editForm.tons) <= 0 || Number(editForm.pricePerTon) <= 0) {
+    editError.value = 'Mahsulot, tonna va narxni to`g`ri kiriting.'
     return
   }
 
@@ -255,7 +285,7 @@ const saveEdit = () => {
     return
   }
 
-  if (Number(editForm.amount) > editMaxAmount.value) {
+  if (editAmount.value > editMaxAmount.value) {
     editError.value = `Maksimal yopiladigan summa: ${formatSom(editMaxAmount.value)}`
     return
   }
@@ -265,7 +295,10 @@ const saveEdit = () => {
     date: editForm.date,
     supplierName: editForm.supplierName,
     clientName: editForm.clientName,
-    amount: Number(editForm.amount),
+    productName: editForm.productName,
+    tons: Number(editForm.tons),
+    pricePerTon: Number(editForm.pricePerTon),
+    amount: editAmount.value,
     notes: editForm.notes.trim()
   })
 
@@ -295,8 +328,37 @@ const closeDelete = () => {
 const applySameNameCandidate = (name: string, maxOffset: number) => {
   createForm.supplierName = name
   createForm.clientName = name
-  createForm.amount = Number(maxOffset.toFixed(2))
+  createForm.productName = 'Qum'
+  createForm.tons = 0
+  createForm.pricePerTon = getInitialPrice('Qum')
+  formError.value = `Bu juftlik uchun maksimal barter ${formatSom(Number(maxOffset.toFixed(2)))}. Mahsulot, tonna va narxni kiriting.`
 }
+
+watch(
+  () => createForm.productName,
+  (productName) => {
+    const nextDefaultPrice = getInitialPrice(productName)
+
+    if (Number(createForm.pricePerTon) <= 0 || Number(createForm.pricePerTon) === previousCreateDefaultPrice.value) {
+      createForm.pricePerTon = nextDefaultPrice
+    }
+
+    previousCreateDefaultPrice.value = nextDefaultPrice
+  }
+)
+
+watch(
+  () => editForm.productName,
+  (productName) => {
+    const nextDefaultPrice = getInitialPrice(productName)
+
+    if (Number(editForm.pricePerTon) <= 0 || Number(editForm.pricePerTon) === previousEditDefaultPrice.value) {
+      editForm.pricePerTon = nextDefaultPrice
+    }
+
+    previousEditDefaultPrice.value = nextDefaultPrice
+  }
+)
 </script>
 
 <template>
@@ -320,10 +382,10 @@ const applySameNameCandidate = (name: string, maxOffset: number) => {
   <section v-if="canManageAccounting" class="panel p-5">
     <header class="mb-4">
       <h3 class="text-base font-semibold text-slate-900">{{ t('Barter yozuvi qo`shish') }}</h3>
-      <p class="text-sm text-slate-500">{{ t("Pul bermasdan, tosh qarzini qum yoki mel bilan yopilgan summani shu yerga yozing.") }}</p>
+      <p class="text-sm text-slate-500">{{ t("Pul bermasdan, tosh qarzini qum yoki mel bilan yopilgan mahsulot bo'yicha shu yerga yozing.") }}</p>
     </header>
 
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
       <AppInput v-model="createForm.date" type="date" label="Sana" />
       <AppSelect
         v-model="createForm.supplierName"
@@ -340,11 +402,18 @@ const applySameNameCandidate = (name: string, maxOffset: number) => {
         :searchable="true"
         placeholder="Klientni tanlang"
       />
-      <AppInput v-model="createForm.amount" type="number" min="0" step="0.01" label="Summa" />
+      <AppSelect
+        v-model="createForm.productName"
+        label="Mahsulot"
+        :options="productTypes.map((item) => ({ label: item, value: item }))"
+      />
+      <AppInput v-model="createForm.tons" type="number" min="0" step="0.01" label="Tonna" />
+      <AppInput v-model="createForm.pricePerTon" type="number" min="0" step="0.01" label="Narx / kg" />
+      <AppInput :model-value="createAmount" type="number" label="Jami summa" disabled />
       <AppInput v-model="createForm.notes" label="Izoh" placeholder="Masalan, tosh o'rniga qum bilan yopildi" />
     </div>
 
-    <div class="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-3">
+    <div class="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-4">
       <div>
         <p class="text-xs text-slate-500">Ta'minotchi bo'yicha ochiq qarz</p>
         <p class="mt-1 text-sm font-semibold text-rose-700">{{ formatSom(createSupplierAvailable) }}</p>
@@ -356,6 +425,10 @@ const applySameNameCandidate = (name: string, maxOffset: number) => {
       <div>
         <p class="text-xs text-slate-500">Maksimal barter</p>
         <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatSom(createMaxAmount) }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500">Hisoblanayotgan summa</p>
+        <p class="mt-1 text-sm font-semibold text-emerald-700">{{ formatSom(createAmount) }}</p>
       </div>
     </div>
 
@@ -410,6 +483,14 @@ const applySameNameCandidate = (name: string, maxOffset: number) => {
       </header>
 
       <AppTable :columns="historyColumns" :rows="historyRows" empty-text="Barter yozuvlari topilmadi.">
+        <template #cell-tons="{ value }">
+          {{ formatTons(Number(value ?? 0)) }}
+        </template>
+
+        <template #cell-pricePerTon="{ value }">
+          {{ formatSom(Number(value ?? 0)) }}
+        </template>
+
         <template #cell-amount="{ value }">
           {{ formatSom(Number(value ?? 0)) }}
         </template>
@@ -428,7 +509,6 @@ const applySameNameCandidate = (name: string, maxOffset: number) => {
   <AppModal :open="editModalOpen" title="Barter yozuvini tahrirlash" @close="closeEditModal">
     <div class="grid gap-4 md:grid-cols-2">
       <AppInput v-model="editForm.date" type="date" label="Sana" />
-      <AppInput v-model="editForm.amount" type="number" min="0" step="0.01" label="Summa" />
       <AppSelect
         v-model="editForm.supplierName"
         label="Ta'minotchi"
@@ -444,12 +524,20 @@ const applySameNameCandidate = (name: string, maxOffset: number) => {
         :searchable="true"
         placeholder="Klientni tanlang"
       />
+      <AppSelect
+        v-model="editForm.productName"
+        label="Mahsulot"
+        :options="productTypes.map((item) => ({ label: item, value: item }))"
+      />
+      <AppInput v-model="editForm.tons" type="number" min="0" step="0.01" label="Tonna" />
+      <AppInput v-model="editForm.pricePerTon" type="number" min="0" step="0.01" label="Narx / kg" />
+      <AppInput :model-value="editAmount" type="number" label="Jami summa" disabled />
       <div class="md:col-span-2">
         <AppInput v-model="editForm.notes" label="Izoh" placeholder="Masalan, mel bilan yopildi" />
       </div>
     </div>
 
-    <div class="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-3">
+    <div class="mt-4 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-4">
       <div>
         <p class="text-xs text-slate-500">Ta'minotchi bo'yicha ochiq qarz</p>
         <p class="mt-1 text-sm font-semibold text-rose-700">{{ formatSom(editSupplierAvailable) }}</p>
@@ -461,6 +549,10 @@ const applySameNameCandidate = (name: string, maxOffset: number) => {
       <div>
         <p class="text-xs text-slate-500">Maksimal barter</p>
         <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatSom(editMaxAmount) }}</p>
+      </div>
+      <div>
+        <p class="text-xs text-slate-500">Hisoblanayotgan summa</p>
+        <p class="mt-1 text-sm font-semibold text-emerald-700">{{ formatSom(editAmount) }}</p>
       </div>
     </div>
 

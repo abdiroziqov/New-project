@@ -103,6 +103,9 @@ export interface BarterRecord {
   date: string
   supplierName: string
   clientName: string
+  productName: ProductType
+  tons: number
+  pricePerTon: number
   amount: number
   notes: string
 }

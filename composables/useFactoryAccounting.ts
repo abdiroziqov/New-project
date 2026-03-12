@@ -416,7 +416,15 @@ const normalizeBarterRecord = (record: Partial<BarterRecord>): BarterRecord => (
   date: record.date ?? new Date().toISOString().slice(0, 10),
   supplierName: record.supplierName?.trim() ?? '',
   clientName: record.clientName?.trim() ?? '',
-  amount: Number(Math.max(record.amount ?? 0, 0).toFixed(2)),
+  productName: productTypes.includes(record.productName as ProductType) ? (record.productName as ProductType) : 'Qum',
+  tons: Number(Math.max(record.tons ?? 0, 0).toFixed(2)),
+  pricePerTon: Number(Math.max(record.pricePerTon ?? 0, 0).toFixed(2)),
+  amount: Number(
+    Math.max(
+      record.amount ?? getSaleTotal(Number(record.tons ?? 0), Number(record.pricePerTon ?? 0)),
+      0
+    ).toFixed(2)
+  ),
   notes: record.notes?.trim() ?? ''
 })
 

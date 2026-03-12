@@ -294,13 +294,20 @@ const normalizePaymentRecord = (record: unknown): PaymentRecord => {
 
 const normalizeBarterRecord = (record: unknown): BarterRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<BarterRecord>) : {}
+  const productName = source.productName === 'Mel' ? 'Mel' : 'Qum'
+  const tons = asNumber(source.tons)
+  const pricePerTon = asNumber(source.pricePerTon)
+  const amount = asNumber(source.amount) || getSaleTotal(tons, pricePerTon)
 
   return {
     id: asString(source.id, createId('barter')),
     date: asString(source.date, todayIso()),
     supplierName: asString(source.supplierName),
     clientName: asString(source.clientName),
-    amount: asNumber(source.amount),
+    productName,
+    tons,
+    pricePerTon,
+    amount,
     notes: asString(source.notes)
   }
 }
