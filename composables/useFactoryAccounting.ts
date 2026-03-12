@@ -621,7 +621,9 @@ export const useFactoryAccounting = () => {
   const clientSummaries = computed<ClientSummary[]>(() => {
     const summaryMap = new Map<string, ClientSummary>()
     const applyClientBalance = (current: ClientSummary) => {
-      const netBalance = Number((current.totalDebt - current.totalAdvance - current.totalBarter).toFixed(2))
+      const debtAfterAdvance = Math.max(current.totalDebt - current.totalAdvance, 0)
+      const appliedBarter = Math.min(current.totalBarter, debtAfterAdvance)
+      const netBalance = Number((current.totalDebt - current.totalAdvance - appliedBarter).toFixed(2))
 
       if (netBalance > 0) {
         current.balanceType = 'bizga_qarz'

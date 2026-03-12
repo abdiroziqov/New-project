@@ -179,13 +179,27 @@ const getAvailableClientDebt = (clientName: string, currentRecord: BarterRecord 
 
 const createSupplierAvailable = computed(() => getAvailableSupplierDebt(createForm.supplierName))
 const createClientAvailable = computed(() => getAvailableClientDebt(createForm.clientName))
-const createMaxAmount = computed(() => Math.min(createSupplierAvailable.value, createClientAvailable.value))
+const createIsSameParty = computed(
+  () =>
+    Boolean(createForm.supplierName && createForm.clientName) &&
+    normalizePartyName(createForm.supplierName) === normalizePartyName(createForm.clientName)
+)
+const createMaxAmount = computed(() =>
+  createIsSameParty.value ? createSupplierAvailable.value : Math.min(createSupplierAvailable.value, createClientAvailable.value)
+)
 const createAmount = computed(() => getBarterAmount(Number(createForm.tons), Number(createForm.pricePerTon)))
 
 const currentEditRecord = computed(() => barterRecords.value.find((record) => record.id === editForm.id) ?? null)
 const editSupplierAvailable = computed(() => getAvailableSupplierDebt(editForm.supplierName, currentEditRecord.value))
 const editClientAvailable = computed(() => getAvailableClientDebt(editForm.clientName, currentEditRecord.value))
-const editMaxAmount = computed(() => Math.min(editSupplierAvailable.value, editClientAvailable.value))
+const editIsSameParty = computed(
+  () =>
+    Boolean(editForm.supplierName && editForm.clientName) &&
+    normalizePartyName(editForm.supplierName) === normalizePartyName(editForm.clientName)
+)
+const editMaxAmount = computed(() =>
+  editIsSameParty.value ? editSupplierAvailable.value : Math.min(editSupplierAvailable.value, editClientAvailable.value)
+)
 const editAmount = computed(() => getBarterAmount(Number(editForm.tons), Number(editForm.pricePerTon)))
 
 const resetCreateForm = () => {
@@ -432,6 +446,10 @@ watch(
       </div>
     </div>
 
+    <p v-if="createIsSameParty" class="mt-3 text-xs text-slate-500">
+      Bir xil odam tanlangan. Bu holatda barter supplier qarzidan yopiladi, klientda oldindan qarz bo'lishi shart emas.
+    </p>
+
     <p v-if="formError" class="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
       {{ formError }}
     </p>
@@ -555,6 +573,10 @@ watch(
         <p class="mt-1 text-sm font-semibold text-emerald-700">{{ formatSom(editAmount) }}</p>
       </div>
     </div>
+
+    <p v-if="editIsSameParty" class="mt-3 text-xs text-slate-500">
+      Bir xil odam tanlangan. Bu holatda barter supplier qarzidan yopiladi, klientda oldindan qarz bo'lishi shart emas.
+    </p>
 
     <p v-if="editError" class="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
       {{ editError }}
