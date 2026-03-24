@@ -20,6 +20,8 @@ const exactTranslations: Record<string, string> = {
   "Qo'lda kiritish": 'Қўлда киритиш',
   "Qo'lda Kiritish": 'Қўлда Киритиш',
   "Pul Kiritish": 'Пул Киритиш',
+  'Oxirgi data': 'Охирги дата',
+  'USD kursi': 'USD курси',
   'Yuklab olish': 'Юклаб олиш',
   'CSV export': 'CSV экспорт',
   'JSON export': 'JSON экспорт',

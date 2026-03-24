@@ -2,15 +2,28 @@
 const route = useRoute()
 const runtimeConfig = useRuntimeConfig()
 const { user, logout } = useAuth()
+const { latestDate } = useFactoryAccounting()
 const { mainNavigation, manualNavigation, getPageTitle } = useAppNavigation()
 const { formatDate } = useFormatting()
 const { t, locale, setLocale, localeOptions } = useUiLocale()
+const { data: usdRateData } = useFetch('/api/finance/usd-rate', {
+  key: 'header:usd-rate',
+  default: () => ({
+    ok: false,
+    rate: null as number | null,
+    diff: null as number | null,
+    date: '',
+    fetchedAt: '',
+    stale: true
+  })
+})
 
 const emit = defineEmits<{
   toggleSidebar: []
 }>()
 
 const pageTitle = computed(() => getPageTitle(route.path) ?? runtimeConfig.public.appName)
+const latestDateLabel = computed(() => formatDate(latestDate.value))
 const today = useState('layout:header-today', () => {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Tashkent',
@@ -24,6 +37,17 @@ const today = useState('layout:header-today', () => {
   const day = parts.find((part) => part.type === 'day')?.value ?? ''
 
   return formatDate(`${year}-${month}-${day}`)
+})
+
+const usdRateLabel = computed(() => {
+  if (typeof usdRateData.value?.rate !== 'number') {
+    return '-'
+  }
+
+  return `${new Intl.NumberFormat('uz-UZ', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(usdRateData.value.rate)} ${t('som')}`
 })
 
 const isActive = (path: string) => {
@@ -59,10 +83,30 @@ const handleLogout = async () => {
             </NuxtLink>
             · {{ today }}
           </p>
+          <div class="mt-2 flex flex-wrap gap-2 md:hidden">
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{{ t('Oxirgi data') }}</p>
+              <p class="text-xs font-bold text-slate-900">{{ latestDateLabel }}</p>
+            </div>
+            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{{ t('USD kursi') }}</p>
+              <p class="text-xs font-bold text-emerald-900">{{ usdRateLabel }}</p>
+            </div>
+          </div>
         </div>
       </div>
 
       <div class="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+        <div class="hidden items-center gap-2 md:flex">
+          <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-right">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{{ t('Oxirgi data') }}</p>
+            <p class="text-xs font-bold text-slate-900">{{ latestDateLabel }}</p>
+          </div>
+          <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-right">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{{ t('USD kursi') }}</p>
+            <p class="text-xs font-bold text-emerald-900">{{ usdRateLabel }}</p>
+          </div>
+        </div>
         <div class="hidden items-center rounded-lg bg-slate-100 p-1 sm:flex">
           <button
             v-for="item in localeOptions"
