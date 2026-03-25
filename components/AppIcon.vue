@@ -1,6 +1,7 @@
 <script setup lang="ts">
 type IconName =
   | 'dashboard'
+  | 'analysis'
   | 'scale'
   | 'barter'
   | 'quick-entry'
@@ -37,6 +38,23 @@ defineProps<Props>()
     <rect x="13" y="3" width="8" height="5" rx="2" />
     <rect x="13" y="10" width="8" height="11" rx="2" />
     <rect x="3" y="13" width="8" height="8" rx="2" />
+  </svg>
+
+  <svg
+    v-else-if="name === 'analysis'"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M4 20h16" />
+    <path d="M7 16v-5" />
+    <path d="M12 16V8" />
+    <path d="M17 16V5" />
+    <path d="M5 7.5 9 4l3 2 6-3" />
   </svg>
 
   <svg

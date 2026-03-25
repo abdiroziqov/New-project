@@ -27,6 +27,7 @@ const pageGuideKey = computed(() => {
   const path = route.path
 
   if (path === '/dashboard') return 'dashboard'
+  if (path === '/analysis') return 'analysis'
   if (path === '/production') return 'production'
   if (path === '/raw-materials') return 'rawMaterials'
   if (path === '/suppliers') return 'suppliers'

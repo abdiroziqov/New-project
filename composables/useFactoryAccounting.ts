@@ -645,6 +645,15 @@ export const useFactoryAccounting = () => {
         ...payments.value.map((record) => record.date),
         ...barterRecords.value.map((record) => record.date)
       ]),
+      analysis: buildGuide([
+        ...dailyRecords.value.map((record) => record.date),
+        ...incomingLoads.value.map((record) => record.date),
+        ...sales.value.map((record) => record.date),
+        ...expenses.value.map((record) => record.date),
+        ...manualDebts.value.map((record) => record.date),
+        ...payments.value.map((record) => record.date),
+        ...barterRecords.value.map((record) => record.date)
+      ]),
       production: buildGuide(dailyRecords.value.map((record) => record.date)),
       rawMaterials: buildGuide(incomingLoads.value.map((record) => record.date)),
       suppliers: buildGuide(incomingLoads.value.map((record) => record.date)),
