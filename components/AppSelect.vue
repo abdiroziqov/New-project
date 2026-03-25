@@ -119,7 +119,7 @@ onBeforeUnmount(() => {
 })
 
 const selectClasses = computed(() => [
-  'w-full rounded-2xl border bg-white px-5 py-3.5 text-base text-slate-900 outline-none transition',
+  'w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 outline-none transition',
   props.invalid
     ? 'border-rose-400 bg-rose-50 ring-rose-200 focus:border-rose-500 focus:ring'
     : 'border-slate-300 ring-brand-300 focus:border-brand-500 focus:ring'
@@ -142,18 +142,18 @@ const selectClasses = computed(() => [
           :disabled="disabled"
           :placeholder="t(placeholder)"
           autocomplete="off"
-          :class="[...selectClasses, 'pr-14 placeholder:text-slate-400']"
+          :class="[...selectClasses, 'pr-11 placeholder:text-slate-400']"
           @focus="openDropdown"
           @input="onSearchInput"
         >
         <button
           type="button"
-          class="absolute inset-y-0 right-0 flex w-14 items-center justify-center text-slate-500 transition hover:text-slate-700"
+          class="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-500 transition hover:text-slate-700"
           :disabled="disabled"
           @click="toggleDropdown"
         >
           <svg
-            class="h-5 w-5 transition"
+            class="h-4 w-4 transition"
             :class="dropdownOpen ? 'rotate-180' : ''"
             viewBox="0 0 20 20"
             fill="currentColor"
@@ -170,19 +170,19 @@ const selectClasses = computed(() => [
 
       <div
         v-if="dropdownOpen"
-        class="absolute z-50 mt-3 max-h-72 w-full overflow-y-auto rounded-3xl border border-slate-300 bg-white py-2 shadow-xl"
+        class="absolute z-50 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl"
       >
         <button
           v-for="option in filteredOptions"
           :key="option.value"
           type="button"
-          class="flex w-full items-center justify-between px-6 py-4 text-left text-xl text-slate-700 transition hover:bg-slate-50"
+          class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
           @mousedown.prevent="selectOption(option.value)"
         >
           <span>{{ option.label }}</span>
           <svg
             v-if="option.value === modelValue"
-            class="h-5 w-5 text-brand-700"
+            class="h-4 w-4 text-brand-700"
             viewBox="0 0 20 20"
             fill="currentColor"
             aria-hidden="true"
@@ -195,7 +195,7 @@ const selectClasses = computed(() => [
           </svg>
         </button>
 
-        <p v-if="!filteredOptions.length" class="px-6 py-4 text-base text-slate-400">
+        <p v-if="!filteredOptions.length" class="px-3 py-2 text-sm text-slate-400">
           {{ t('Natija topilmadi') }}
         </p>
       </div>
