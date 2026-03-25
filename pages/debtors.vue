@@ -48,8 +48,6 @@ const { formatSom, formatTons, formatDate } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
 const { t } = useUiLocale()
 
-const manualDebtClientListId = 'manual-debt-client-list'
-
 const filters = reactive({
   search: '',
   startDate: '',
@@ -853,17 +851,15 @@ const clearFilters = () => {
   <AppModal :open="manualDebtModalOpen" :title="editingManualDebtId ? 'Eski qarzni tahrirlash' : 'Eski qarz qo`shish'" size="sm" @close="closeManualDebtModal">
     <div class="space-y-4">
       <AppInput v-model="manualDebtForm.date" type="date" label="Sana" :invalid="Boolean(manualDebtError) && !manualDebtForm.date" />
-      <AppInput
+      <AppSelect
         v-model="manualDebtForm.clientName"
-        :list="manualDebtClientListId"
         label="Klient"
-        placeholder="Masalan, Begzod"
-        autocomplete="off"
+        :options="clientOptions"
+        :translate-options="false"
+        :searchable="true"
+        placeholder="Klientni tanlang"
         :invalid="Boolean(manualDebtError) && !manualDebtForm.clientName.trim()"
       />
-      <datalist :id="manualDebtClientListId">
-        <option v-for="client in clientOptions" :key="client.value" :value="client.value">{{ client.label }}</option>
-      </datalist>
       <AppInput
         v-model="manualDebtForm.amount"
         type="number"

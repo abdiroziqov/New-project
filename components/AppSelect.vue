@@ -46,7 +46,12 @@ const displayOptions = computed(() =>
   }))
 )
 const normalizedModelValue = computed(() => String(props.modelValue ?? ''))
+const selectedOption = computed(() => displayOptions.value.find((option) => option.value === normalizedModelValue.value) ?? null)
 const filteredOptions = computed(() => {
+  if (!props.searchable) {
+    return displayOptions.value
+  }
+
   const query = normalizedModelValue.value.trim().toLowerCase()
 
   if (!query) {
@@ -59,10 +64,6 @@ const filteredOptions = computed(() => {
     return label.includes(query) || value.includes(query)
   })
 })
-
-const onChange = (event: Event) => {
-  emit('update:modelValue', (event.target as HTMLSelectElement).value)
-}
 
 const onSearchInput = (event: Event) => {
   dropdownOpen.value = true
@@ -87,6 +88,10 @@ const toggleDropdown = () => {
   }
 
   dropdownOpen.value = !dropdownOpen.value
+}
+
+const handleEscape = () => {
+  closeDropdown()
 }
 
 const selectOption = (value: string) => {
@@ -132,9 +137,10 @@ const selectClasses = computed(() => [
       {{ t(label) }}
     </label>
 
-    <div v-if="searchable" ref="wrapperRef" class="relative">
+    <div ref="wrapperRef" class="relative" @keydown.esc="handleEscape">
       <div class="relative">
         <input
+          v-if="searchable"
           :id="selectId"
           type="text"
           :value="modelValue ?? ''"
@@ -146,6 +152,18 @@ const selectClasses = computed(() => [
           @focus="openDropdown"
           @input="onSearchInput"
         >
+        <button
+          v-else
+          :id="selectId"
+          type="button"
+          :disabled="disabled"
+          :class="[...selectClasses, 'flex items-center justify-between pr-11 text-left']"
+          @click="toggleDropdown"
+        >
+          <span :class="selectedOption ? 'text-slate-900' : 'text-slate-400'">
+            {{ selectedOption?.label || t(placeholder) }}
+          </span>
+        </button>
         <button
           type="button"
           class="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-500 transition hover:text-slate-700"
@@ -200,20 +218,5 @@ const selectClasses = computed(() => [
         </p>
       </div>
     </div>
-
-    <select
-      v-else
-      :id="selectId"
-      :value="modelValue ?? ''"
-      :required="required"
-      :disabled="disabled"
-      :class="selectClasses"
-      @change="onChange"
-    >
-      <option value="">{{ t(placeholder) }}</option>
-      <option v-for="option in displayOptions" :key="option.value" :value="option.value">
-        {{ option.label }}
-      </option>
-    </select>
   </div>
 </template>
