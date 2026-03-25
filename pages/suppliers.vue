@@ -6,7 +6,7 @@ definePageMeta({
   layout: 'dashboard'
 })
 
-const { supplierSummaries, getSupplierProfile } = useFactoryAccounting()
+const { supplierSummaries, supplierContacts, getSupplierProfile } = useFactoryAccounting()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { getSupplierChipClass } = useSupplierHighlight()
 const { downloadWorkbook } = useExcelExport()
@@ -18,6 +18,12 @@ const filters = reactive({
 })
 
 const selectedSupplierName = ref('')
+const supplierSelectOptions = computed(() =>
+  supplierContacts.value.map((contact) => ({
+    label: contact.name,
+    value: contact.name
+  }))
+)
 
 const supplierColumns: TableColumn[] = [
   { key: 'supplierName', label: "Ta'minotchi", headerClass: 'font-bold text-brand-700', cellClass: 'font-bold text-brand-700' },
@@ -244,9 +250,12 @@ const balanceToneClass = (balanceType: unknown) => {
 
   <section class="panel p-4">
     <div class="grid gap-3 md:grid-cols-[1fr_auto]">
-      <AppInput
+      <AppSelect
         v-model="filters.supplier"
         label="Ta'minotchi"
+        :options="supplierSelectOptions"
+        :translate-options="false"
+        :searchable="true"
         placeholder="Masalan, Begzod yoki Jorabek"
       />
       <div class="flex items-end">

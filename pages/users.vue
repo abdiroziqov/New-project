@@ -459,7 +459,13 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
 
   <AppModal :open="modalOpen" :title="editingClientId ? 'Klientni tahrirlash' : 'Klient qo`shish'" size="md" @close="modalOpen = false">
     <div class="grid gap-4">
-      <AppInput v-model="form.name" label="Klient nomi" placeholder="Masalan, Begzod" required />
+      <AppInput
+        v-model="form.name"
+        label="Klient nomi"
+        placeholder="Masalan, Begzod"
+        :invalid="Boolean(formError) && !form.name.trim()"
+        required
+      />
       <AppInput v-model="form.phone" mask="phone" label="Telefon" placeholder="Masalan, +998 90 123 45 67" autocomplete="tel" />
       <div class="grid gap-3 md:grid-cols-[1fr_auto]">
         <AppInput v-model="form.telegramChatId" label="Telegram chat ID" placeholder="Masalan, 123456789" />

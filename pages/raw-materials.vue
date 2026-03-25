@@ -10,6 +10,7 @@ type IncomingLoadFormState = {
   date: string
   factory: FactoryName | ''
   vehicleType: VehicleType
+  vehicleCount: string
   tons: number
   supplier: string
   totalAmount: number
@@ -20,6 +21,7 @@ type IncomingLoadFormState = {
 const {
   incomingLoads,
   factoryOptions,
+  supplierContacts,
   latestDate,
   addIncomingLoad,
   updateIncomingLoad,
@@ -40,6 +42,7 @@ const createFormState = (): IncomingLoadFormState => ({
   date: latestDate.value,
   factory: '',
   vehicleType: 'Howo',
+  vehicleCount: '1',
   tons: getVehicleDefaultTons('Howo'),
   supplier: '',
   totalAmount: 0,
@@ -65,6 +68,12 @@ const selectedLoad = ref<IncomingLoadRecord | null>(null)
 
 const supplierModalOpen = ref(false)
 const selectedSupplierName = ref('')
+const supplierSelectOptions = computed(() =>
+  supplierContacts.value.map((contact) => ({
+    label: contact.name,
+    value: contact.name
+  }))
+)
 
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -168,12 +177,15 @@ const formBalanceType = computed<BalanceType>(() => {
 const formPaymentStatus = computed<PaymentStatus>(() => getPaymentStatus(formTotalAmount.value, Number(form.paidAmount || 0)))
 
 watch(
-  () => form.vehicleType,
-  (vehicleType, previousVehicleType) => {
-    const previousDefault = previousVehicleType ? getVehicleDefaultTons(previousVehicleType) : 0
+  () => [form.vehicleType, form.vehicleCount] as const,
+  ([vehicleType, vehicleCount], previousValues) => {
+    const previousVehicleType = previousValues?.[0]
+    const previousVehicleCount = Number(previousValues?.[1] ?? '1')
+    const previousDefault = previousVehicleType ? getVehicleDefaultTons(previousVehicleType) * previousVehicleCount : 0
+    const nextDefault = getVehicleDefaultTons(vehicleType) * Number(vehicleCount || '1')
 
     if (Number(form.tons) <= 0 || Number(form.tons) === previousDefault) {
-      form.tons = getVehicleDefaultTons(vehicleType)
+      form.tons = nextDefault
     }
   }
 )
@@ -358,6 +370,7 @@ const openEditModal = (row: Record<string, unknown>) => {
     date: record.date,
     factory: record.factory,
     vehicleType: record.vehicleType,
+    vehicleCount: '1',
     tons: record.tons,
     supplier: record.supplier,
     totalAmount: record.totalAmount,
@@ -564,7 +577,7 @@ const clearFilters = () => {
 
   <AppModal :open="modalOpen" :title="editingId ? 'Kirimni tahrirlash' : 'Kirim qo`shish'" size="xl" @close="modalOpen = false">
     <div class="grid gap-4 md:grid-cols-2">
-      <AppInput v-model="form.date" type="date" label="Sana" required />
+      <AppInput v-model="form.date" type="date" label="Sana" :invalid="Boolean(formError) && !form.date" required />
       <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" placeholder="Ixtiyoriy" />
       <AppSelect
         v-model="form.vehicleType"
@@ -573,16 +586,39 @@ const clearFilters = () => {
           { label: 'Howo', value: 'Howo' },
           { label: 'Kamaz', value: 'Kamaz' }
         ]"
+        :invalid="Boolean(formError) && !form.vehicleType"
         required
       />
+      <AppSelect
+        v-model="form.vehicleCount"
+        label="Soni"
+        :options="[
+          { label: '1 ta', value: '1' },
+          { label: '2 ta', value: '2' },
+          { label: '3 ta', value: '3' },
+          { label: '4 ta', value: '4' },
+          { label: '5 ta', value: '5' }
+        ]"
+      />
       <AppInput v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" placeholder="Ixtiyoriy" />
-      <AppInput v-model="form.totalAmount" type="number" min="0" step="0.01" label="Jami narx" required />
-      <AppInput v-model="form.paidAmount" type="number" min="0" step="0.01" label="To'langan summa" />
       <AppInput
+        v-model="form.totalAmount"
+        type="number"
+        min="0"
+        step="0.01"
+        label="Jami narx"
+        :invalid="Boolean(formError) && Number(form.totalAmount) <= 0"
+        required
+      />
+      <AppInput v-model="form.paidAmount" type="number" min="0" step="0.01" label="To'langan summa" />
+      <AppSelect
         v-model="form.supplier"
         label="Ta'minotchi"
+        :options="supplierSelectOptions"
+        :translate-options="false"
+        :searchable="true"
         placeholder="Karer yoki ta'minotchi nomi"
-        :input-class="getSupplierInputClass(form.supplier)"
+        :invalid="Boolean(formError) && !form.supplier.trim()"
         required
       />
       <div class="md:col-span-2">

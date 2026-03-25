@@ -431,27 +431,44 @@ watch(
 
   <AppModal :open="modalOpen" :title="editingId ? 'Chiqimni tahrirlash' : 'Chiqim qo`shish'" @close="modalOpen = false">
     <div class="grid gap-4 md:grid-cols-2">
-      <AppInput v-model="expenseForm.date" type="date" label="Sana" required />
+      <AppInput v-model="expenseForm.date" type="date" label="Sana" :invalid="Boolean(formError) && !expenseForm.date" required />
       <AppSelect
         v-model="expenseForm.factory"
         label="Zavod"
         :options="factoryOptions"
         placeholder="Umumiy chiqim"
+        :invalid="Boolean(formError) && expenseForm.category === 'Ishchi' && !expenseForm.factory"
       />
       <AppSelect
         v-model="expenseForm.category"
         label="Kategoriya"
         :options="expenseCategories.map((item) => ({ label: item, value: item }))"
+        :invalid="Boolean(formError) && !expenseForm.category"
         required
       />
       <AppSelect
         v-model="expenseForm.paymentMethod"
         label="To`lov turi"
         :options="paymentMethods.map((item) => ({ label: item, value: item }))"
+        :invalid="Boolean(formError) && !expenseForm.paymentMethod"
         required
       />
-      <AppInput v-model="expenseForm.description" label="Tavsif" placeholder="Nimaga chiqim bo'ldi?" required />
-      <AppInput v-model="expenseForm.amount" type="number" min="0" step="0.01" label="Summa" required />
+      <AppInput
+        v-model="expenseForm.description"
+        label="Tavsif"
+        placeholder="Nimaga chiqim bo'ldi?"
+        :invalid="Boolean(formError) && !expenseForm.description.trim()"
+        required
+      />
+      <AppInput
+        v-model="expenseForm.amount"
+        type="number"
+        min="0"
+        step="0.01"
+        label="Summa"
+        :invalid="Boolean(formError) && Number(expenseForm.amount) <= 0"
+        required
+      />
       <div class="md:col-span-2">
         <AppInput v-model="expenseForm.notes" label="Izoh" placeholder="Qo'shimcha izoh" />
       </div>

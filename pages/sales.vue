@@ -388,8 +388,8 @@ const saveSale = () => {
     notes: form.notes.trim()
   }
 
-  if (!payload.date || !payload.factory || !payload.clientName) {
-    formError.value = 'Sana, zavod va klientni tanlang.'
+  if (!payload.date || !payload.clientName) {
+    formError.value = 'Sana va klientni tanlang.'
     return
   }
 
@@ -640,11 +640,20 @@ watch(
 
   <AppModal :open="modalOpen" :title="editingId ? 'Sotuvni tahrirlash' : 'Sotuv qo`shish'" size="lg" @close="modalOpen = false">
     <div class="grid gap-4 md:grid-cols-2">
-      <AppInput v-model="form.date" type="date" label="Sana" required />
+      <AppInput v-model="form.date" type="date" label="Sana" :invalid="Boolean(formError) && !form.date" required />
       <AppInput v-model="form.time" type="time" label="Soat" />
 
       <div class="md:col-span-2 grid gap-3 md:grid-cols-[1fr_auto]">
-        <AppSelect v-model="form.clientName" label="Klient" :options="clientSelectOptions" :translate-options="false" :searchable="true" placeholder="Klientni tanlang" required />
+        <AppSelect
+          v-model="form.clientName"
+          label="Klient"
+          :options="clientSelectOptions"
+          :translate-options="false"
+          :searchable="true"
+          placeholder="Klientni tanlang"
+          :invalid="Boolean(formError) && !form.clientName.trim()"
+          required
+        />
         <div class="flex items-end">
           <NuxtLink to="/users" class="btn-secondary w-full">{{ t("Klient qo'shish") }}</NuxtLink>
         </div>
@@ -654,6 +663,7 @@ watch(
         v-model="form.productName"
         label="Mahsulot turi"
         :options="productTypes.map((item) => ({ label: item, value: item }))"
+        :invalid="Boolean(formError) && !form.productName"
         required
       />
       <AppSelect
@@ -665,15 +675,33 @@ watch(
               { label: 'Rasipnoy', value: 'rasipnoy' }
             ]
           : [{ label: 'Qoplik', value: 'qoplik' }]"
+        :invalid="Boolean(formError) && !form.shipmentType"
         required
       />
-      <AppInput v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" required />
-      <AppInput v-model="form.pricePerTon" type="number" min="0" step="0.01" label="Narx / kg" required />
-      <AppInput v-model="form.paidAmount" type="number" min="0" step="0.01" label="To'langan summa" required />
+      <AppInput v-model="form.tons" type="number" min="0" step="0.01" label="Tonna" :invalid="Boolean(formError) && Number(form.tons) <= 0" required />
+      <AppInput
+        v-model="form.pricePerTon"
+        type="number"
+        min="0"
+        step="0.01"
+        label="Narx / kg"
+        :invalid="Boolean(formError) && Number(form.pricePerTon) <= 0"
+        required
+      />
+      <AppInput
+        v-model="form.paidAmount"
+        type="number"
+        min="0"
+        step="0.01"
+        label="To'langan summa"
+        :invalid="Boolean(formError) && Number(form.paidAmount) < 0"
+        required
+      />
       <AppSelect
         v-model="form.paymentMethod"
         label="To`lov turi"
         :options="paymentMethods.map((item) => ({ label: item, value: item }))"
+        :invalid="Boolean(formError) && !form.paymentMethod"
         required
       />
 

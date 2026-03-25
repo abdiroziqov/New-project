@@ -16,6 +16,7 @@ interface Props {
   searchable?: boolean
   required?: boolean
   disabled?: boolean
+  invalid?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -25,7 +26,8 @@ const props = withDefaults(defineProps<Props>(), {
   translateOptions: true,
   searchable: false,
   required: false,
-  disabled: false
+  disabled: false,
+  invalid: false
 })
 
 const emit = defineEmits<{
@@ -50,6 +52,13 @@ const onChange = (event: Event) => {
 const onSearchInput = (event: Event) => {
   emit('update:modelValue', (event.target as HTMLInputElement).value)
 }
+
+const selectClasses = computed(() => [
+  'w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 outline-none transition',
+  props.invalid
+    ? 'border-rose-400 bg-rose-50 ring-rose-200 focus:border-rose-500 focus:ring'
+    : 'border-slate-300 ring-brand-300 focus:border-brand-500 focus:ring'
+])
 </script>
 
 <template>
@@ -68,7 +77,7 @@ const onSearchInput = (event: Event) => {
         :placeholder="t(placeholder)"
         :list="datalistId"
         autocomplete="off"
-        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-brand-300 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring"
+        :class="[...selectClasses, 'placeholder:text-slate-400']"
         @input="onSearchInput"
       >
       <datalist :id="datalistId">
@@ -84,7 +93,7 @@ const onSearchInput = (event: Event) => {
       :value="modelValue ?? ''"
       :required="required"
       :disabled="disabled"
-      class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-brand-300 transition focus:border-brand-500 focus:ring"
+      :class="selectClasses"
       @change="onChange"
     >
       <option value="">{{ t(placeholder) }}</option>

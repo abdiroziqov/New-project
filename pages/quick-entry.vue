@@ -24,6 +24,7 @@ const {
   expenseCategories,
   paymentMethods,
   clientOptions,
+  supplierContacts,
   latestDate,
   addDailyRecord,
   addIncomingLoad,
@@ -42,6 +43,7 @@ type IncomingLoadQuickForm = {
   date: string
   factory: FactoryName | ''
   vehicleType: VehicleType
+  vehicleCount: string
   tons: number
   supplier: string
   totalAmount: number
@@ -62,6 +64,7 @@ const loadForm = reactive<IncomingLoadQuickForm>({
   date: latestDate.value,
   factory: '',
   vehicleType: 'Howo',
+  vehicleCount: '1',
   tons: getVehicleDefaultTons('Howo'),
   supplier: '',
   totalAmount: 0,
@@ -97,6 +100,12 @@ const expenseForm = reactive<Omit<OperationalExpense, 'id'>>({
 
 const infoMessage = ref('')
 const quickSaleSuggestionsListId = 'quick-sale-client-suggestions'
+const supplierOptions = computed(() =>
+  supplierContacts.value.map((contact) => ({
+    label: contact.name,
+    value: contact.name
+  }))
+)
 
 const showMessage = (message: string) => {
   infoMessage.value = message
@@ -182,6 +191,7 @@ const saveLoad = () => {
     date: latestDate.value,
     factory: '',
     vehicleType: 'Howo',
+    vehicleCount: '1',
     tons: getVehicleDefaultTons('Howo'),
     supplier: '',
     totalAmount: 0,
@@ -268,12 +278,15 @@ const loadPreviewDebt = computed(() => getRemainingAmount(loadPreviewTotal.value
 const loadPreviewAdvance = computed(() => getLoadAdvanceAmount(loadPreviewTotal.value, Number(loadForm.paidAmount || 0)))
 
 watch(
-  () => loadForm.vehicleType,
-  (vehicleType, previousVehicleType) => {
-    const previousDefault = previousVehicleType ? getVehicleDefaultTons(previousVehicleType) : 0
+  () => [loadForm.vehicleType, loadForm.vehicleCount] as const,
+  ([vehicleType, vehicleCount], previousValues) => {
+    const previousVehicleType = previousValues?.[0]
+    const previousVehicleCount = Number(previousValues?.[1] ?? '1')
+    const previousDefault = previousVehicleType ? getVehicleDefaultTons(previousVehicleType) * previousVehicleCount : 0
+    const nextDefault = getVehicleDefaultTons(vehicleType) * Number(vehicleCount || '1')
 
     if (Number(loadForm.tons) <= 0 || Number(loadForm.tons) === previousDefault) {
-      loadForm.tons = getVehicleDefaultTons(vehicleType)
+      loadForm.tons = nextDefault
     }
   }
 )
@@ -461,14 +474,27 @@ watch(
             { label: 'Kamaz', value: 'Kamaz' }
           ]"
         />
+        <AppSelect
+          v-model="loadForm.vehicleCount"
+          label="Soni"
+          :options="[
+            { label: '1 ta', value: '1' },
+            { label: '2 ta', value: '2' },
+            { label: '3 ta', value: '3' },
+            { label: '4 ta', value: '4' },
+            { label: '5 ta', value: '5' }
+          ]"
+        />
         <AppInput v-model="loadForm.tons" type="number" min="0" step="0.01" label="Tonna" placeholder="Ixtiyoriy" />
         <AppInput v-model="loadForm.totalAmount" type="number" min="0" step="0.01" label="Jami narx" />
         <AppInput v-model="loadForm.paidAmount" type="number" min="0" step="0.01" label="To'langan summa" />
-        <AppInput
+        <AppSelect
           v-model="loadForm.supplier"
           label="Kimdan keldi?"
+          :options="supplierOptions"
+          :translate-options="false"
+          :searchable="true"
           placeholder="Ta'minotchi"
-          :input-class="getSupplierInputClass(loadForm.supplier)"
         />
         <div class="md:col-span-2">
           <AppInput v-model="loadForm.notes" label="Izoh" placeholder="Masalan, 1 Howo ertalab keldi" />

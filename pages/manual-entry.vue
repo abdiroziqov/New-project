@@ -335,7 +335,7 @@ watch(
     </header>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-      <AppInput v-model="clientAdvanceForm.date" type="date" label="Sana" />
+      <AppInput v-model="clientAdvanceForm.date" type="date" label="Sana" :invalid="Boolean(clientAdvanceError) && !clientAdvanceForm.date" />
       <AppSelect
         v-model="clientAdvanceForm.clientName"
         label="Klient"
@@ -343,8 +343,16 @@ watch(
         :translate-options="false"
         :searchable="true"
         placeholder="Klientni tanlang"
+        :invalid="Boolean(clientAdvanceError) && !clientAdvanceForm.clientName.trim()"
       />
-      <AppInput v-model="clientAdvanceForm.amount" type="number" min="0" step="0.01" label="Summa" />
+      <AppInput
+        v-model="clientAdvanceForm.amount"
+        type="number"
+        min="0"
+        step="0.01"
+        label="Summa"
+        :invalid="Boolean(clientAdvanceError) && Number(clientAdvanceForm.amount) <= 0"
+      />
       <AppSelect
         v-model="clientAdvanceForm.paymentMethod"
         label="To'lov turi"
@@ -392,7 +400,7 @@ watch(
       </header>
 
       <div class="grid gap-4 md:grid-cols-2">
-        <AppInput v-model="clientPaymentForm.date" type="date" label="To'lov sanasi" />
+        <AppInput v-model="clientPaymentForm.date" type="date" label="To'lov sanasi" :invalid="Boolean(clientPaymentError) && !clientPaymentForm.date" />
         <AppSelect
           v-model="clientPaymentForm.clientName"
           label="Klient"
@@ -400,6 +408,7 @@ watch(
           :translate-options="false"
           :searchable="true"
           placeholder="Klientni tanlang"
+          :invalid="Boolean(clientPaymentError) && !clientPaymentForm.clientName"
         />
         <AppSelect
           v-model="clientPaymentForm.saleId"
@@ -407,13 +416,21 @@ watch(
           :options="clientOutstandingSaleOptions"
           :translate-options="false"
           placeholder="Qarz yozuvini tanlang"
+          :invalid="Boolean(clientPaymentError) && !clientPaymentForm.saleId"
         />
         <AppSelect
           v-model="clientPaymentForm.paymentMethod"
           label="To'lov turi"
           :options="paymentMethods.map((item) => ({ label: item, value: item }))"
         />
-        <AppInput v-model="clientPaymentForm.amount" type="number" min="0" step="0.01" label="Summa" />
+        <AppInput
+          v-model="clientPaymentForm.amount"
+          type="number"
+          min="0"
+          step="0.01"
+          label="Summa"
+          :invalid="Boolean(clientPaymentError) && Number(clientPaymentForm.amount) <= 0"
+        />
         <AppInput v-model="clientPaymentForm.notes" label="Izoh" placeholder="Masalan, qisman to'lov" />
       </div>
 
@@ -487,14 +504,26 @@ watch(
       </header>
 
       <div class="space-y-4">
-        <AppInput v-model="expenseForm.date" type="date" label="Sana" />
+        <AppInput v-model="expenseForm.date" type="date" label="Sana" :invalid="Boolean(expenseError) && !expenseForm.date" />
         <AppSelect
           v-model="expenseForm.category"
           label="Kategoriya"
           :options="expenseCategories.map((item) => ({ label: item, value: item }))"
         />
-        <AppInput v-model="expenseForm.description" label="Tavsif" placeholder="Masalan, servis yoki qarz to'lovi" />
-        <AppInput v-model="expenseForm.amount" type="number" min="0" step="0.01" label="Summa" />
+        <AppInput
+          v-model="expenseForm.description"
+          label="Tavsif"
+          placeholder="Masalan, servis yoki qarz to'lovi"
+          :invalid="Boolean(expenseError) && !expenseForm.description.trim()"
+        />
+        <AppInput
+          v-model="expenseForm.amount"
+          type="number"
+          min="0"
+          step="0.01"
+          label="Summa"
+          :invalid="Boolean(expenseError) && Number(expenseForm.amount) <= 0"
+        />
         <AppSelect
           v-model="expenseForm.paymentMethod"
           label="To'lov turi"

@@ -852,18 +852,26 @@ const clearFilters = () => {
 
   <AppModal :open="manualDebtModalOpen" :title="editingManualDebtId ? 'Eski qarzni tahrirlash' : 'Eski qarz qo`shish'" size="sm" @close="closeManualDebtModal">
     <div class="space-y-4">
-      <AppInput v-model="manualDebtForm.date" type="date" label="Sana" />
+      <AppInput v-model="manualDebtForm.date" type="date" label="Sana" :invalid="Boolean(manualDebtError) && !manualDebtForm.date" />
       <AppInput
         v-model="manualDebtForm.clientName"
         :list="manualDebtClientListId"
         label="Klient"
         placeholder="Masalan, Begzod"
         autocomplete="off"
+        :invalid="Boolean(manualDebtError) && !manualDebtForm.clientName.trim()"
       />
       <datalist :id="manualDebtClientListId">
         <option v-for="client in clientOptions" :key="client.value" :value="client.value">{{ client.label }}</option>
       </datalist>
-      <AppInput v-model="manualDebtForm.amount" type="number" min="0" step="0.01" label="Qarz summasi" />
+      <AppInput
+        v-model="manualDebtForm.amount"
+        type="number"
+        min="0"
+        step="0.01"
+        label="Qarz summasi"
+        :invalid="Boolean(manualDebtError) && Number(manualDebtForm.amount) <= 0"
+      />
       <AppInput v-model="manualDebtForm.notes" label="Izoh" placeholder="Masalan, yozda beradi" />
 
       <p v-if="manualDebtError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -910,8 +918,15 @@ const clearFilters = () => {
         </div>
       </div>
 
-      <AppInput v-model="paymentForm.date" type="date" label="To'lov sanasi" />
-      <AppInput v-model="paymentForm.amount" type="number" min="0" step="0.01" label="To'lov summasi" />
+      <AppInput v-model="paymentForm.date" type="date" label="To'lov sanasi" :invalid="Boolean(paymentError) && !paymentForm.date" />
+      <AppInput
+        v-model="paymentForm.amount"
+        type="number"
+        min="0"
+        step="0.01"
+        label="To'lov summasi"
+        :invalid="Boolean(paymentError) && Number(paymentForm.amount) <= 0"
+      />
       <AppSelect
         v-model="paymentForm.paymentMethod"
         label="To`lov turi"

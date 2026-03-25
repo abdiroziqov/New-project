@@ -400,13 +400,14 @@ watch(
     </header>
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-      <AppInput v-model="createForm.date" type="date" label="Sana" />
+      <AppInput v-model="createForm.date" type="date" label="Sana" :invalid="Boolean(formError) && !createForm.date" />
       <AppSelect
         v-model="createForm.supplierName"
         label="Ta'minotchi"
         :options="supplierOptions"
         :translate-options="false"
         placeholder="Ta'minotchini tanlang"
+        :invalid="Boolean(formError) && !createForm.supplierName"
       />
       <AppSelect
         v-model="createForm.clientName"
@@ -415,14 +416,23 @@ watch(
         :translate-options="false"
         :searchable="true"
         placeholder="Klientni tanlang"
+        :invalid="Boolean(formError) && !createForm.clientName"
       />
       <AppSelect
         v-model="createForm.productName"
         label="Mahsulot"
         :options="productTypes.map((item) => ({ label: item, value: item }))"
+        :invalid="Boolean(formError) && !createForm.productName"
       />
-      <AppInput v-model="createForm.tons" type="number" min="0" step="0.01" label="Tonna" />
-      <AppInput v-model="createForm.pricePerTon" type="number" min="0" step="0.01" label="Narx / kg" />
+      <AppInput v-model="createForm.tons" type="number" min="0" step="0.01" label="Tonna" :invalid="Boolean(formError) && Number(createForm.tons) <= 0" />
+      <AppInput
+        v-model="createForm.pricePerTon"
+        type="number"
+        min="0"
+        step="0.01"
+        label="Narx / kg"
+        :invalid="Boolean(formError) && Number(createForm.pricePerTon) <= 0"
+      />
       <AppInput :model-value="createAmount" type="number" label="Jami summa" disabled />
       <AppInput v-model="createForm.notes" label="Izoh" placeholder="Masalan, tosh o'rniga qum bilan yopildi" />
     </div>
@@ -526,13 +536,14 @@ watch(
 
   <AppModal :open="editModalOpen" title="Barter yozuvini tahrirlash" @close="closeEditModal">
     <div class="grid gap-4 md:grid-cols-2">
-      <AppInput v-model="editForm.date" type="date" label="Sana" />
+      <AppInput v-model="editForm.date" type="date" label="Sana" :invalid="Boolean(editError) && !editForm.date" />
       <AppSelect
         v-model="editForm.supplierName"
         label="Ta'minotchi"
         :options="supplierOptions"
         :translate-options="false"
         placeholder="Ta'minotchini tanlang"
+        :invalid="Boolean(editError) && !editForm.supplierName"
       />
       <AppSelect
         v-model="editForm.clientName"
@@ -541,14 +552,23 @@ watch(
         :translate-options="false"
         :searchable="true"
         placeholder="Klientni tanlang"
+        :invalid="Boolean(editError) && !editForm.clientName"
       />
       <AppSelect
         v-model="editForm.productName"
         label="Mahsulot"
         :options="productTypes.map((item) => ({ label: item, value: item }))"
+        :invalid="Boolean(editError) && !editForm.productName"
       />
-      <AppInput v-model="editForm.tons" type="number" min="0" step="0.01" label="Tonna" />
-      <AppInput v-model="editForm.pricePerTon" type="number" min="0" step="0.01" label="Narx / kg" />
+      <AppInput v-model="editForm.tons" type="number" min="0" step="0.01" label="Tonna" :invalid="Boolean(editError) && Number(editForm.tons) <= 0" />
+      <AppInput
+        v-model="editForm.pricePerTon"
+        type="number"
+        min="0"
+        step="0.01"
+        label="Narx / kg"
+        :invalid="Boolean(editError) && Number(editForm.pricePerTon) <= 0"
+      />
       <AppInput :model-value="editAmount" type="number" label="Jami summa" disabled />
       <div class="md:col-span-2">
         <AppInput v-model="editForm.notes" label="Izoh" placeholder="Masalan, mel bilan yopildi" />

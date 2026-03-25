@@ -16,6 +16,7 @@ interface Props {
   step?: string | number
   required?: boolean
   disabled?: boolean
+  invalid?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -31,7 +32,8 @@ const props = withDefaults(defineProps<Props>(), {
   max: undefined,
   step: undefined,
   required: false,
-  disabled: false
+  disabled: false,
+  invalid: false
 })
 
 const emit = defineEmits<{
@@ -170,6 +172,14 @@ const displayValue = computed(() => {
   return props.modelValue ?? ''
 })
 
+const inputClasses = computed(() => [
+  'w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400',
+  props.inputClass,
+  props.invalid
+    ? 'border-rose-400 bg-rose-50 ring-rose-200 focus:border-rose-500 focus:ring'
+    : 'border-slate-300 ring-brand-300 focus:border-brand-500 focus:ring'
+])
+
 const onInput = (event: Event) => {
   const input = event.target as HTMLInputElement
   const value = input.value
@@ -217,10 +227,7 @@ const onInput = (event: Event) => {
       :step="step"
       :required="required"
       :disabled="disabled"
-      :class="[
-        'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-brand-300 transition placeholder:text-slate-400 focus:border-brand-500 focus:ring',
-        inputClass
-      ]"
+      :class="inputClasses"
       @input="onInput"
     >
   </div>

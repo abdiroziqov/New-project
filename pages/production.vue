@@ -553,12 +553,13 @@ watch(
 
         <template v-if="editingId">
           <div class="grid gap-4 md:grid-cols-4">
-            <AppInput v-model="form.date" type="date" label="Sana" required />
-            <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" required />
+            <AppInput v-model="form.date" type="date" label="Sana" :invalid="Boolean(formError) && !form.date" required />
+            <AppSelect v-model="form.factory" label="Zavod" :options="factoryOptions" :invalid="Boolean(formError) && !form.factory" required />
             <AppSelect
               v-model="form.productType"
               label="Mahsulot turi"
               :options="productTypes.map((item) => ({ label: item, value: item }))"
+              :invalid="Boolean(formError) && !form.productType"
               required
             />
             <AppInput v-model="form.baggedOutputTons" type="number" min="0" step="0.01" label="Qoplik mahsulot (t)" />
@@ -584,7 +585,7 @@ watch(
 
         <template v-else>
           <div class="grid gap-4 md:grid-cols-[0.7fr_1.3fr]">
-            <AppInput v-model="createDate" type="date" label="Sana" required />
+            <AppInput v-model="createDate" type="date" label="Sana" :invalid="Boolean(formError) && !createDate" required />
             <div class="rounded-2xl bg-slate-50 p-4">
               <p class="text-xs uppercase tracking-wide text-slate-500">Jami preview</p>
               <div class="mt-3 grid gap-3 sm:grid-cols-4">
