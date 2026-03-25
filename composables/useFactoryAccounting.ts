@@ -163,6 +163,21 @@ const buildTrend = <T extends { date: string }>(records: T[], getter: (record: T
 }
 
 const roundAmount = (value: number) => Number(value.toFixed(2))
+const getNextIsoDate = (value: string) => {
+  if (!value) {
+    return new Date().toISOString().slice(0, 10)
+  }
+
+  const [year, month, day] = value.split('-').map(Number)
+
+  if (!year || !month || !day) {
+    return new Date().toISOString().slice(0, 10)
+  }
+
+  const nextDate = new Date(Date.UTC(year, month - 1, day))
+  nextDate.setUTCDate(nextDate.getUTCDate() + 1)
+  return nextDate.toISOString().slice(0, 10)
+}
 
 export const getOutputTons = (record: Pick<DailyFactoryRecord, 'baggedOutputTons' | 'bulkOutputTons'>) =>
   Number((record.baggedOutputTons + record.bulkOutputTons).toFixed(2))
@@ -595,6 +610,83 @@ export const useFactoryAccounting = () => {
     ].sort()
 
     return dates.at(-1) ?? new Date().toISOString().slice(0, 10)
+  })
+
+  const sectionDateGuide = computed(() => {
+    const buildGuide = (dates: string[]) => {
+      const sortedDates = dates.filter(Boolean).slice().sort()
+      const lastRecordedDate = sortedDates.at(-1) ?? ''
+      const suggestedDate = getNextIsoDate(lastRecordedDate || latestDate.value)
+
+      return {
+        lastRecordedDate,
+        suggestedDate,
+        hasData: Boolean(lastRecordedDate)
+      }
+    }
+
+    return {
+      overall: buildGuide([
+        ...dailyRecords.value.map((record) => record.date),
+        ...incomingLoads.value.map((record) => record.date),
+        ...manualDebts.value.map((record) => record.date),
+        ...payments.value.map((record) => record.date),
+        ...barterRecords.value.map((record) => record.date),
+        ...sales.value.map((record) => record.date),
+        ...expenses.value.map((record) => record.date),
+        ...scaleCashEntries.value.map((record) => record.date)
+      ]),
+      dashboard: buildGuide([
+        ...dailyRecords.value.map((record) => record.date),
+        ...incomingLoads.value.map((record) => record.date),
+        ...sales.value.map((record) => record.date),
+        ...expenses.value.map((record) => record.date),
+        ...manualDebts.value.map((record) => record.date),
+        ...payments.value.map((record) => record.date),
+        ...barterRecords.value.map((record) => record.date)
+      ]),
+      production: buildGuide(dailyRecords.value.map((record) => record.date)),
+      rawMaterials: buildGuide(incomingLoads.value.map((record) => record.date)),
+      suppliers: buildGuide(incomingLoads.value.map((record) => record.date)),
+      inventory: buildGuide([
+        ...dailyRecords.value.map((record) => record.date),
+        ...incomingLoads.value.map((record) => record.date),
+        ...sales.value.map((record) => record.date)
+      ]),
+      sales: buildGuide(sales.value.map((record) => record.date)),
+      debtors: buildGuide([
+        ...manualDebts.value.map((record) => record.date),
+        ...payments.value.map((record) => record.date)
+      ]),
+      expenses: buildGuide(expenses.value.map((record) => record.date)),
+      reports: buildGuide([
+        ...dailyRecords.value.map((record) => record.date),
+        ...incomingLoads.value.map((record) => record.date),
+        ...sales.value.map((record) => record.date),
+        ...expenses.value.map((record) => record.date),
+        ...manualDebts.value.map((record) => record.date),
+        ...payments.value.map((record) => record.date),
+        ...barterRecords.value.map((record) => record.date)
+      ]),
+      users: buildGuide(
+        contacts.value
+          .map((contact) => contact.createdAt?.slice(0, 10) ?? '')
+          .filter(Boolean)
+      ),
+      manualEntry: buildGuide([
+        ...payments.value.map((record) => record.date),
+        ...expenses.value.map((record) => record.date)
+      ]),
+      quickEntry: buildGuide([
+        ...dailyRecords.value.map((record) => record.date),
+        ...incomingLoads.value.map((record) => record.date),
+        ...sales.value.map((record) => record.date),
+        ...expenses.value.map((record) => record.date),
+        ...payments.value.map((record) => record.date)
+      ]),
+      barter: buildGuide(barterRecords.value.map((record) => record.date)),
+      scale: buildGuide(scaleCashEntries.value.map((record) => record.date))
+    }
   })
 
   const factoryOptions = computed(() =>
@@ -2073,6 +2165,7 @@ export const useFactoryAccounting = () => {
     recentExpenses,
     canManageAccounting,
     latestDate,
+    sectionDateGuide,
     todaySummary,
     overallSummary,
     todayFactoryBreakdown,

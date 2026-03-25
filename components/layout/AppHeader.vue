@@ -2,7 +2,7 @@
 const route = useRoute()
 const runtimeConfig = useRuntimeConfig()
 const { user, logout } = useAuth()
-const { latestDate } = useFactoryAccounting()
+const { latestDate, sectionDateGuide } = useFactoryAccounting()
 const { mainNavigation, manualNavigation, getPageTitle } = useAppNavigation()
 const { formatDate } = useFormatting()
 const { t, locale, setLocale, localeOptions } = useUiLocale()
@@ -23,7 +23,31 @@ const emit = defineEmits<{
 }>()
 
 const pageTitle = computed(() => getPageTitle(route.path) ?? runtimeConfig.public.appName)
-const latestDateLabel = computed(() => formatDate(latestDate.value))
+const pageGuideKey = computed(() => {
+  const path = route.path
+
+  if (path === '/dashboard') return 'dashboard'
+  if (path === '/production') return 'production'
+  if (path === '/raw-materials') return 'rawMaterials'
+  if (path === '/suppliers') return 'suppliers'
+  if (path === '/inventory') return 'inventory'
+  if (path === '/sales') return 'sales'
+  if (path === '/debtors') return 'debtors'
+  if (path === '/expenses') return 'expenses'
+  if (path === '/reports') return 'reports'
+  if (path === '/users') return 'users'
+  if (path === '/manual-entry') return 'manualEntry'
+  if (path === '/quick-entry') return 'quickEntry'
+  if (path === '/barter') return 'barter'
+  if (path === '/scale') return 'scale'
+
+  return 'overall'
+})
+const currentSectionGuide = computed(() => sectionDateGuide.value[pageGuideKey.value as keyof typeof sectionDateGuide.value] ?? sectionDateGuide.value.overall)
+const latestDateLabel = computed(() => (currentSectionGuide.value.lastRecordedDate ? formatDate(currentSectionGuide.value.lastRecordedDate) : '-'))
+const suggestedDateLabel = computed(() => formatDate(currentSectionGuide.value.suggestedDate || latestDate.value))
+const latestDateSubtitle = computed(() => currentSectionGuide.value.hasData ? t('shu bo`lim bo`yicha') : t('hali yozuv yo`q'))
+const suggestedDateSubtitle = computed(() => currentSectionGuide.value.hasData ? t('navbatdagi kiritish') : t('bugundan boshlang'))
 const today = useState('layout:header-today', () => {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Tashkent',
@@ -87,6 +111,12 @@ const handleLogout = async () => {
             <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
               <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{{ t('Oxirgi data') }}</p>
               <p class="text-xs font-bold text-slate-900">{{ latestDateLabel }}</p>
+              <p class="text-[10px] text-slate-500">{{ latestDateSubtitle }}</p>
+            </div>
+            <div class="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-700">{{ t('Keyingi sana') }}</p>
+              <p class="text-xs font-bold text-brand-900">{{ suggestedDateLabel }}</p>
+              <p class="text-[10px] text-brand-700">{{ suggestedDateSubtitle }}</p>
             </div>
             <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
               <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{{ t('USD kursi') }}</p>
@@ -101,6 +131,12 @@ const handleLogout = async () => {
           <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-right">
             <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{{ t('Oxirgi data') }}</p>
             <p class="text-xs font-bold text-slate-900">{{ latestDateLabel }}</p>
+            <p class="text-[10px] text-slate-500">{{ latestDateSubtitle }}</p>
+          </div>
+          <div class="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-right">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-brand-700">{{ t('Keyingi sana') }}</p>
+            <p class="text-xs font-bold text-brand-900">{{ suggestedDateLabel }}</p>
+            <p class="text-[10px] text-brand-700">{{ suggestedDateSubtitle }}</p>
           </div>
           <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-right">
             <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700">{{ t('USD kursi') }}</p>
