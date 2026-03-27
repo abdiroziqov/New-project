@@ -100,6 +100,7 @@ export const expenseCategories: ExpenseCategory[] = [
   'Sementovoz kredit',
   'Panel kredit',
   'Kobalt kredit',
+  'Soliq',
   'Boshqa'
 ]
 export const paymentMethods: PaymentMethod[] = ['Naqd', 'Click', 'Prichesleniya']

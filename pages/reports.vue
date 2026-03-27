@@ -12,6 +12,7 @@ const { setRecentDays, setCurrentMonth } = useDateRangePresets()
 const { downloadWorkbook } = useExcelExport()
 const { printWorkbook } = usePdfExport()
 const { t } = useUiLocale()
+const normalizeText = (value: string) => value.trim().toLowerCase()
 
 const filters = reactive({
   startDate: '',
@@ -25,6 +26,20 @@ const jamshidWorkerSummary = computed(
 )
 const oybekWorkerSummary = computed(
   () => summary.value.workerPaymentByFactory.find((item) => item.factory === 'Oybek') ?? null
+)
+const oybekAdvanceExpense = computed(() =>
+  Number(
+    summary.value.expenseRecords
+      .filter((record) => {
+        const haystack = normalizeText(`${record.description} ${record.notes}`)
+        return haystack.includes('oybek') && haystack.includes('avans')
+      })
+      .reduce((sum, record) => sum + record.amount, 0)
+      .toFixed(2)
+  )
+)
+const oybekRemainingSalary = computed(() =>
+  Math.max(0, Number(((oybekWorkerSummary.value?.accrued ?? 0) - oybekAdvanceExpense.value).toFixed(2)))
 )
 
 const factoryColumns: TableColumn[] = [
@@ -229,8 +244,10 @@ const buildReportSheets = () => {
         { metric: 'Chiqim', value: Math.round(summary.value.extraExpensesTotal) },
         { metric: 'Qarz', value: Math.round(summary.value.totalDebt) },
         { metric: 'Foyda', value: Math.round(summary.value.totalProfit) },
-        { metric: 'Jamshid ishchi (kunlik)', value: Math.round(jamshidWorkerSummary.value?.paidNow ?? 0) },
-        { metric: 'Oybek ishchi (oylik)', value: Math.round(oybekWorkerSummary.value?.accrued ?? 0) }
+        { metric: 'Jamshid ishchi jami', value: Math.round(jamshidWorkerSummary.value?.amount ?? 0) },
+        { metric: 'Oybek ishchi (oylik)', value: Math.round(oybekWorkerSummary.value?.accrued ?? 0) },
+        { metric: 'Oybek avans', value: Math.round(oybekAdvanceExpense.value) },
+        { metric: 'Oybek qolgan oylik', value: Math.round(oybekRemainingSalary.value) }
       ]
     },
     {
@@ -354,9 +371,11 @@ const exportCsv = () => {
     <StatCard title="Boshqa chiqim" :value="formatSom(summary.totalOperationalExpenses)" subtitle="qo'shimcha xarajatlar" />
   </section>
 
-  <section class="grid gap-4 sm:grid-cols-2">
-    <StatCard title="Jamshid ishchi puli" :value="formatSom(jamshidWorkerSummary?.paidNow ?? 0)" subtitle="har kun beriladi" />
+  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <StatCard title="Jamshid ishchi jami" :value="formatSom(jamshidWorkerSummary?.amount ?? 0)" subtitle="kunlik hisob bo'yicha" />
     <StatCard title="Oybek yig'ilgan oylik" :value="formatSom(oybekWorkerSummary?.accrued ?? 0)" subtitle="oy oxiriga yig'iladi" />
+    <StatCard title="Oybek avans" :value="formatSom(oybekAdvanceExpense)" subtitle="`oybek` + `avans` yozuvlari" />
+    <StatCard title="Oybek qolgan oylik" :value="formatSom(oybekRemainingSalary)" subtitle="oylikdan avans ayirilgan" />
   </section>
 
   <section class="grid gap-4 lg:grid-cols-3">

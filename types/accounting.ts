@@ -16,6 +16,7 @@ export type ExpenseCategory =
   | 'Sementovoz kredit'
   | 'Panel kredit'
   | 'Kobalt kredit'
+  | 'Soliq'
   | 'Boshqa'
 export type PaymentMethod = 'Naqd' | 'Click' | 'Prichesleniya'
 export type ReminderFrequency = 'daily' | 'every_2_days'
