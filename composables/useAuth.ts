@@ -23,6 +23,7 @@ export const useAuth = () => {
   const role = computed<UserRole | null>(() => user.value?.role ?? null)
   const isAuthenticated = computed(() => Boolean(user.value))
   const isAdmin = computed(() => role.value === 'admin')
+  const isProAdmin = computed(() => isAdmin.value && user.value?.username === 'pro')
   const canEditAccounting = computed(() => isAdmin.value)
 
   const login = async (username: string, password: string) => {
@@ -65,6 +66,7 @@ export const useAuth = () => {
     role,
     isAuthenticated,
     isAdmin,
+    isProAdmin,
     canEditAccounting,
     login,
     logout,

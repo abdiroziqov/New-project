@@ -17,7 +17,8 @@ export default defineNuxtPlugin((nuxtApp) => {
       expenses,
       contacts,
       reminders,
-      monthlyArchiveRecords
+      monthlyArchiveRecords,
+      auditLogs
     } =
       useFactoryAccounting()
     const { isAdmin } = useAuth()
@@ -41,6 +42,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       contacts: contacts.value,
       reminders: reminders.value,
       monthlyArchiveRecords: monthlyArchiveRecords.value,
+      auditLogs: auditLogs.value,
       updatedAt: new Date().toISOString()
     })
 
@@ -59,6 +61,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       contacts.value = snapshot.contacts
       reminders.value = snapshot.reminders
       monthlyArchiveRecords.value = snapshot.monthlyArchiveRecords
+      auditLogs.value = snapshot.auditLogs
       lastSerializedSnapshot = JSON.stringify(buildSnapshot())
     }
 
@@ -75,7 +78,8 @@ export default defineNuxtPlugin((nuxtApp) => {
           snapshot.expenses.length ||
           snapshot.contacts.length ||
           snapshot.reminders.length ||
-          snapshot.monthlyArchiveRecords.length
+          snapshot.monthlyArchiveRecords.length ||
+          snapshot.auditLogs.length
       )
 
     const readLocalSnapshot = (): AccountingStateSnapshot | null => {
@@ -95,6 +99,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           contacts: JSON.parse(window.localStorage.getItem(`${storagePrefix}contacts`) || '[]'),
           reminders: JSON.parse(window.localStorage.getItem(`${storagePrefix}reminders`) || '[]'),
           monthlyArchiveRecords: JSON.parse(window.localStorage.getItem(`${storagePrefix}monthly-archive-records`) || '[]'),
+          auditLogs: JSON.parse(window.localStorage.getItem(`${storagePrefix}audit-logs`) || '[]'),
           updatedAt: new Date().toISOString()
         } as AccountingStateSnapshot
 
@@ -176,7 +181,8 @@ export default defineNuxtPlugin((nuxtApp) => {
             expenses,
             contacts,
             reminders,
-            monthlyArchiveRecords
+            monthlyArchiveRecords,
+            auditLogs
           ],
           scheduleSave,
           { deep: true }

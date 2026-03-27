@@ -2,6 +2,7 @@
 type IconName =
   | 'dashboard'
   | 'analysis'
+  | 'audit'
   | 'scale'
   | 'barter'
   | 'quick-entry'
@@ -55,6 +56,23 @@ defineProps<Props>()
     <path d="M12 16V8" />
     <path d="M17 16V5" />
     <path d="M5 7.5 9 4l3 2 6-3" />
+  </svg>
+
+  <svg
+    v-else-if="name === 'audit'"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M7 4h10l2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+    <path d="M9 9h6" />
+    <path d="M9 13h6" />
+    <path d="M9 17h4" />
+    <path d="M15 4v3h3" />
   </svg>
 
   <svg

@@ -43,5 +43,14 @@
     "role": "manager",
     "email": "sanjar.y@factory.local",
     "status": "inactive"
+  },
+  {
+    "id": "u-006",
+    "name": "Pro Admin",
+    "username": "pro",
+    "password": "12345678",
+    "role": "admin",
+    "email": "pro@factory.local",
+    "status": "active"
   }
 ]

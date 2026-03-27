@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import type {
   AccountingStateSnapshot,
+  AuditLogRecord,
   ArchiveFactoryScope,
   BarterRecord,
   BalanceType,
@@ -443,6 +444,34 @@ const normalizeScaleCashEntry = (record: unknown): ScaleCashEntry => {
   }
 }
 
+const normalizeAuditLogRecord = (record: unknown): AuditLogRecord => {
+  const source = typeof record === 'object' && record ? (record as Partial<AuditLogRecord>) : {}
+  const actorRole = source.actorRole === 'manager' || source.actorRole === 'operator' ? source.actorRole : 'admin'
+  const action = source.action === 'update' || source.action === 'delete' ? source.action : 'add'
+
+  return {
+    id: asString(source.id, createId('audit')),
+    createdAt: asString(source.createdAt, new Date().toISOString()),
+    actorId: asString(source.actorId),
+    actorName: asString(source.actorName, 'Admin'),
+    actorUsername: asString(source.actorUsername),
+    actorRole,
+    section: asString(source.section, 'Tizim'),
+    entityType: asString(source.entityType, 'record'),
+    action,
+    recordId: asString(source.recordId),
+    summary: asString(source.summary),
+    before:
+      source.before && typeof source.before === 'object'
+        ? (clone(source.before) as Record<string, unknown>)
+        : null,
+    after:
+      source.after && typeof source.after === 'object'
+        ? (clone(source.after) as Record<string, unknown>)
+        : null
+  }
+}
+
 const buildSeedState = (): AccountingStateSnapshot => ({
   defaultCosts: clone(defaultCostProfile),
   dailyRecords: (dailySource as unknown[]).map((record) => normalizeDailyRecord(record, defaultCostProfile)),
@@ -458,6 +487,7 @@ const buildSeedState = (): AccountingStateSnapshot => ({
   contacts: (contactsSource as unknown[]).map((record) => normalizeContactRecord(record)),
   reminders: [],
   monthlyArchiveRecords: (monthlyArchiveSource as unknown[]).map((record) => normalizeMonthlyArchiveRecord(record)),
+  auditLogs: [],
   updatedAt: new Date().toISOString()
 })
 
@@ -488,6 +518,7 @@ export const normalizeAccountingState = (snapshot: unknown): AccountingStateSnap
     monthlyArchiveRecords: Array.isArray(source.monthlyArchiveRecords)
       ? source.monthlyArchiveRecords.map((record) => normalizeMonthlyArchiveRecord(record))
       : (monthlyArchiveSource as unknown[]).map((record) => normalizeMonthlyArchiveRecord(record)),
+    auditLogs: Array.isArray(source.auditLogs) ? source.auditLogs.map((record) => normalizeAuditLogRecord(record)) : [],
     updatedAt: asString(source.updatedAt, new Date().toISOString())
   }
 }

@@ -1,3 +1,5 @@
+import type { UserRole } from '~/types/auth'
+
 export type FactoryName = 'Oybek' | 'Jamshid'
 export type ProductType = 'Qum' | 'Mel'
 export type VehicleType = 'Howo' | 'Kamaz'
@@ -21,6 +23,23 @@ export type MonthlyArchiveSection = 'income' | 'expense' | 'note'
 export type ArchiveFactoryScope = FactoryName | 'combined'
 export type ScaleDirection = 'kirim' | 'chiqim' | 'unknown'
 export type ScaleCashType = 'kirim' | 'chiqim'
+export type AuditAction = 'add' | 'update' | 'delete'
+
+export interface AuditLogRecord {
+  id: string
+  createdAt: string
+  actorId: string
+  actorName: string
+  actorUsername: string
+  actorRole: UserRole
+  section: string
+  entityType: string
+  action: AuditAction
+  recordId: string
+  summary: string
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+}
 
 export interface CostProfile {
   sandPricePerTon: number
@@ -284,5 +303,6 @@ export interface AccountingStateSnapshot {
   contacts: ContactRecord[]
   reminders: ClientReminderSetting[]
   monthlyArchiveRecords: MonthlyArchiveRecord[]
+  auditLogs: AuditLogRecord[]
   updatedAt: string
 }

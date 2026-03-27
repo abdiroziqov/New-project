@@ -11,6 +11,8 @@ import scaleCashEntriesSource from '~/data/mock/scale-cash-entries.json'
 import scaleEntriesSource from '~/data/mock/scale-entries.json'
 import type {
   ArchiveFactoryScope,
+  AuditAction,
+  AuditLogRecord,
   BarterRecord,
   ClientReminderSetting,
   ClientDirectoryRecord,
@@ -539,7 +541,7 @@ const buildCostBreakdown = (profile: CostProfile) => {
 }
 
 export const useFactoryAccounting = () => {
-  const { hasRole, isAdmin } = useAuth()
+  const { hasRole, isAdmin, user } = useAuth()
   const defaultCosts = useState<CostProfile>('accounting:default-costs', () => clone(defaultCostProfile))
   const contacts = useState<ContactRecord[]>(
     'accounting:contacts',
@@ -596,6 +598,10 @@ export const useFactoryAccounting = () => {
   const monthlyArchiveRecords = useState<MonthlyArchiveRecord[]>(
     'accounting:monthly-archive-records',
     () => clone(seedMonthlyArchiveRecords).map((record) => normalizeMonthlyArchiveRecord(record))
+  )
+  const auditLogs = useState<AuditLogRecord[]>(
+    'accounting:audit-logs',
+    () => []
   )
 
   const latestDate = computed(() => {
@@ -1257,7 +1263,7 @@ export const useFactoryAccounting = () => {
     return `https://t.me/${normalizedUsername}`
   }
 
-  const upsertReminder = (payload: Omit<ClientReminderSetting, 'id'> & { id?: string }) => {
+  const upsertReminder = (payload: Omit<ClientReminderSetting, 'id'> & { id?: string }, options?: { silent?: boolean }) => {
     if (!guardAdminMutation()) {
       return
     }
@@ -1271,12 +1277,34 @@ export const useFactoryAccounting = () => {
 
     if (existingIndex === -1) {
       reminders.value.unshift(normalizedPayload)
+      if (!options?.silent) {
+        appendAuditLog({
+          action: 'add',
+          section: 'Qarzdorlar',
+          entityType: 'telegram-reminder',
+          recordId: normalizedPayload.id,
+          summary: `${normalizedPayload.clientName} uchun TG eslatma qo'shildi`,
+          after: normalizedPayload
+        })
+      }
       return
     }
 
+    const previous = reminders.value[existingIndex]
     reminders.value[existingIndex] = {
       ...reminders.value[existingIndex],
       ...normalizedPayload
+    }
+    if (!options?.silent) {
+      appendAuditLog({
+        action: 'update',
+        section: 'Qarzdorlar',
+        entityType: 'telegram-reminder',
+        recordId: reminders.value[existingIndex].id,
+        summary: `${normalizedPayload.clientName} uchun TG eslatma tahrirlandi`,
+        before: previous,
+        after: reminders.value[existingIndex]
+      })
     }
   }
 
@@ -1285,7 +1313,19 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = reminders.value.find((record) => record.id === id)
     reminders.value = reminders.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Qarzdorlar',
+        entityType: 'telegram-reminder',
+        recordId: existing.id,
+        summary: `${existing.clientName} uchun TG eslatma o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const markReminderSent = (clientName: string, sentAt = new Date().toISOString()) => {
@@ -1302,7 +1342,7 @@ export const useFactoryAccounting = () => {
     upsertReminder({
       ...reminder,
       lastSentAt: sentAt
-    })
+    }, { silent: true })
   }
 
   const reminderList = computed(() =>
@@ -1330,6 +1370,48 @@ export const useFactoryAccounting = () => {
 
   const canManageAccounting = computed(() => isAdmin.value)
 
+  const toAuditPayload = (value: unknown): Record<string, unknown> | null => {
+    if (!value || typeof value !== 'object') {
+      return null
+    }
+
+    return clone(value as Record<string, unknown>)
+  }
+
+  const appendAuditLog = (payload: {
+    action: AuditAction
+    section: string
+    entityType: string
+    recordId: string
+    summary: string
+    before?: unknown
+    after?: unknown
+  }) => {
+    if (!user.value) {
+      return
+    }
+
+    auditLogs.value.unshift({
+      id: createId('audit'),
+      createdAt: new Date().toISOString(),
+      actorId: user.value.id,
+      actorName: user.value.name,
+      actorUsername: user.value.username,
+      actorRole: user.value.role,
+      section: payload.section,
+      entityType: payload.entityType,
+      action: payload.action,
+      recordId: payload.recordId,
+      summary: payload.summary,
+      before: toAuditPayload(payload.before),
+      after: toAuditPayload(payload.after)
+    })
+
+    if (auditLogs.value.length > 500) {
+      auditLogs.value = auditLogs.value.slice(0, 500)
+    }
+  }
+
   const guardAdminMutation = () => {
     if (hasRole('admin')) {
       return true
@@ -1339,18 +1421,29 @@ export const useFactoryAccounting = () => {
     return false
   }
 
-  const addContact = (payload: Omit<ContactRecord, 'id' | 'createdAt'>) => {
+  const addContact = (payload: Omit<ContactRecord, 'id' | 'createdAt'>, options?: { silent?: boolean }) => {
     if (!guardAdminMutation()) {
       return
     }
 
-    contacts.value.unshift(
-      normalizeContactRecord({
-        id: createId('contact'),
-        createdAt: new Date().toISOString(),
-        ...payload
+    const record = normalizeContactRecord({
+      id: createId('contact'),
+      createdAt: new Date().toISOString(),
+      ...payload
+    })
+
+    contacts.value.unshift(record)
+
+    if (!options?.silent) {
+      appendAuditLog({
+        action: 'add',
+        section: payload.type === 'supplier' ? "Ta'minotchilar" : 'Klientlar',
+        entityType: payload.type,
+        recordId: record.id,
+        summary: `${record.name} qo'shildi`,
+        after: record
       })
-    )
+    }
   }
 
   const updateContact = (payload: ContactRecord) => {
@@ -1361,7 +1454,18 @@ export const useFactoryAccounting = () => {
     const index = contacts.value.findIndex((record) => record.id === payload.id)
 
     if (index !== -1) {
-      contacts.value[index] = normalizeContactRecord(payload)
+      const previous = contacts.value[index]
+      const record = normalizeContactRecord(payload)
+      contacts.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: record.type === 'supplier' ? "Ta'minotchilar" : 'Klientlar',
+        entityType: record.type,
+        recordId: record.id,
+        summary: `${record.name} tahrirlandi`,
+        before: previous,
+        after: record
+      })
     }
   }
 
@@ -1370,7 +1474,19 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = contacts.value.find((record) => record.id === id)
     contacts.value = contacts.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: existing.type === 'supplier' ? "Ta'minotchilar" : 'Klientlar',
+        entityType: existing.type,
+        recordId: existing.id,
+        summary: `${existing.name} o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const ensureClientContact = (clientName: string) => {
@@ -1391,7 +1507,7 @@ export const useFactoryAccounting = () => {
         telegramUsername: '',
         address: '',
         notes: ''
-      })
+      }, { silent: true })
     }
   }
 
@@ -1413,7 +1529,7 @@ export const useFactoryAccounting = () => {
         telegramUsername: '',
         address: '',
         notes: ''
-      })
+      }, { silent: true })
     }
   }
 
@@ -1422,10 +1538,21 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const previous = clone(defaultCosts.value)
+
     defaultCosts.value = {
       ...payload
     }
     dailyRecords.value = dailyRecords.value.map((record) => normalizeDailyRecord(record, defaultCosts.value))
+    appendAuditLog({
+      action: 'update',
+      section: 'Chiqimlar',
+      entityType: 'default-costs',
+      recordId: 'default-costs',
+      summary: 'Avtomatik tannarx sozlamalari tahrirlandi',
+      before: previous,
+      after: payload
+    })
   }
 
   const addDailyRecord = (payload: Omit<DailyFactoryRecord, 'id'>) => {
@@ -1433,7 +1560,16 @@ export const useFactoryAccounting = () => {
       return
     }
 
-    dailyRecords.value.unshift(normalizeDailyRecord({ id: createId('day'), ...payload }, defaultCosts.value))
+    const record = normalizeDailyRecord({ id: createId('day'), ...payload }, defaultCosts.value)
+    dailyRecords.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Kunlik Hisob',
+      entityType: 'daily-record',
+      recordId: record.id,
+      summary: `${record.factory} uchun ${record.date} kunlik yozuv qo'shildi`,
+      after: record
+    })
   }
 
   const updateDailyRecord = (payload: DailyFactoryRecord) => {
@@ -1444,7 +1580,18 @@ export const useFactoryAccounting = () => {
     const index = dailyRecords.value.findIndex((record) => record.id === payload.id)
 
     if (index !== -1) {
-      dailyRecords.value[index] = normalizeDailyRecord(payload, defaultCosts.value)
+      const previous = dailyRecords.value[index]
+      const record = normalizeDailyRecord(payload, defaultCosts.value)
+      dailyRecords.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Kunlik Hisob',
+        entityType: 'daily-record',
+        recordId: record.id,
+        summary: `${record.factory} uchun ${record.date} kunlik yozuv tahrirlandi`,
+        before: previous,
+        after: record
+      })
     }
   }
 
@@ -1453,7 +1600,19 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = dailyRecords.value.find((record) => record.id === id)
     dailyRecords.value = dailyRecords.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Kunlik Hisob',
+        entityType: 'daily-record',
+        recordId: existing.id,
+        summary: `${existing.factory} uchun ${existing.date} kunlik yozuv o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const addIncomingLoad = (payload: Omit<IncomingLoadRecord, 'id'>) => {
@@ -1462,16 +1621,23 @@ export const useFactoryAccounting = () => {
     }
 
     ensureSupplierContact(payload.supplier)
-    incomingLoads.value.unshift(
-      normalizeIncomingLoadRecord(
-        {
-          id: createId('load'),
-          ...payload
-        },
-        Number(payload.pricePerTon ?? 0),
-        Number(payload.paidAmount)
-      )
+    const record = normalizeIncomingLoadRecord(
+      {
+        id: createId('load'),
+        ...payload
+      },
+      Number(payload.pricePerTon ?? 0),
+      Number(payload.paidAmount)
     )
+    incomingLoads.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Tosh Kirimi',
+      entityType: 'incoming-load',
+      recordId: record.id,
+      summary: `${record.supplier || 'Taʼminotchi'} uchun tosh kirimi qo'shildi`,
+      after: record
+    })
   }
 
   const updateIncomingLoad = (payload: IncomingLoadRecord) => {
@@ -1483,7 +1649,18 @@ export const useFactoryAccounting = () => {
 
     if (index !== -1) {
       ensureSupplierContact(payload.supplier)
-      incomingLoads.value[index] = normalizeIncomingLoadRecord(payload, Number(payload.pricePerTon), Number(payload.paidAmount))
+      const previous = incomingLoads.value[index]
+      const record = normalizeIncomingLoadRecord(payload, Number(payload.pricePerTon), Number(payload.paidAmount))
+      incomingLoads.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Tosh Kirimi',
+        entityType: 'incoming-load',
+        recordId: record.id,
+        summary: `${record.supplier || 'Taʼminotchi'} tosh kirimi tahrirlandi`,
+        before: previous,
+        after: record
+      })
     }
   }
 
@@ -1492,7 +1669,19 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = incomingLoads.value.find((record) => record.id === id)
     incomingLoads.value = incomingLoads.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Tosh Kirimi',
+        entityType: 'incoming-load',
+        recordId: existing.id,
+        summary: `${existing.supplier || 'Taʼminotchi'} tosh kirimi o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const replaceScaleState = (entries: ScaleEntry[], syncMeta: ScaleSyncMeta) => {
@@ -1509,13 +1698,20 @@ export const useFactoryAccounting = () => {
       return
     }
 
-    scaleCashEntries.value.unshift(
-      normalizeScaleCashEntryRecord({
-        id: createId('scale-cash'),
-        ...payload,
-        createdAt: new Date().toISOString()
-      })
-    )
+    const record = normalizeScaleCashEntryRecord({
+      id: createId('scale-cash'),
+      ...payload,
+      createdAt: new Date().toISOString()
+    })
+    scaleCashEntries.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Tarozi',
+      entityType: 'scale-cash',
+      recordId: record.id,
+      summary: `Tarozi ${record.type} puli qo'shildi`,
+      after: record
+    })
   }
 
   const updateScaleCashEntry = (payload: ScaleCashEntry) => {
@@ -1526,7 +1722,18 @@ export const useFactoryAccounting = () => {
     const index = scaleCashEntries.value.findIndex((record) => record.id === payload.id)
 
     if (index !== -1) {
-      scaleCashEntries.value[index] = normalizeScaleCashEntryRecord(payload)
+      const previous = scaleCashEntries.value[index]
+      const record = normalizeScaleCashEntryRecord(payload)
+      scaleCashEntries.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Tarozi',
+        entityType: 'scale-cash',
+        recordId: record.id,
+        summary: `Tarozi ${record.type} puli tahrirlandi`,
+        before: previous,
+        after: record
+      })
     }
   }
 
@@ -1535,7 +1742,19 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = scaleCashEntries.value.find((record) => record.id === id)
     scaleCashEntries.value = scaleCashEntries.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Tarozi',
+        entityType: 'scale-cash',
+        recordId: existing.id,
+        summary: `Tarozi ${existing.type} puli o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const addSale = (
@@ -1548,13 +1767,20 @@ export const useFactoryAccounting = () => {
     const saleId = createId('sale')
     ensureClientContact(payload.clientName)
 
-    sales.value.unshift(
-      normalizeSaleRecord({
-        id: saleId,
-        totalAmount: getSaleTotal(payload.tons, payload.pricePerTon),
-        ...payload
-      })
-    )
+    const record = normalizeSaleRecord({
+      id: saleId,
+      totalAmount: getSaleTotal(payload.tons, payload.pricePerTon),
+      ...payload
+    })
+    sales.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Sotuvlar',
+      entityType: 'sale',
+      recordId: record.id,
+      summary: `${record.clientName} uchun sotuv qo'shildi`,
+      after: record
+    })
 
     if (payload.paidAmount > 0) {
       payments.value.unshift({
@@ -1582,9 +1808,20 @@ export const useFactoryAccounting = () => {
 
     if (index !== -1) {
       ensureClientContact(payload.clientName)
-      sales.value[index] = normalizeSaleRecord({
+      const previous = sales.value[index]
+      const record = normalizeSaleRecord({
         ...payload,
         totalAmount: getSaleTotal(payload.tons, payload.pricePerTon)
+      })
+      sales.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Sotuvlar',
+        entityType: 'sale',
+        recordId: record.id,
+        summary: `${record.clientName} uchun sotuv tahrirlandi`,
+        before: previous,
+        after: record
       })
     }
   }
@@ -1594,8 +1831,20 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = sales.value.find((record) => record.id === id)
     sales.value = sales.value.filter((record) => record.id !== id)
     payments.value = payments.value.filter((record) => record.saleId !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Sotuvlar',
+        entityType: 'sale',
+        recordId: existing.id,
+        summary: `${existing.clientName} uchun sotuv o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const addManualDebt = (payload: Omit<ManualDebtRecord, 'id' | 'remainingAmount'>) => {
@@ -1604,12 +1853,19 @@ export const useFactoryAccounting = () => {
     }
 
     ensureClientContact(payload.clientName)
-    manualDebts.value.unshift(
-      normalizeManualDebtRecord({
-        id: createId('debt'),
-        ...payload
-      })
-    )
+    const record = normalizeManualDebtRecord({
+      id: createId('debt'),
+      ...payload
+    })
+    manualDebts.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Qarzdorlar',
+      entityType: 'manual-debt',
+      recordId: record.id,
+      summary: `${record.clientName} uchun eski qarz qo'shildi`,
+      after: record
+    })
   }
 
   const updateManualDebt = (payload: ManualDebtRecord) => {
@@ -1621,7 +1877,18 @@ export const useFactoryAccounting = () => {
 
     if (index !== -1) {
       ensureClientContact(payload.clientName)
-      manualDebts.value[index] = normalizeManualDebtRecord(payload)
+      const previous = manualDebts.value[index]
+      const record = normalizeManualDebtRecord(payload)
+      manualDebts.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Qarzdorlar',
+        entityType: 'manual-debt',
+        recordId: record.id,
+        summary: `${record.clientName} uchun eski qarz tahrirlandi`,
+        before: previous,
+        after: record
+      })
     }
   }
 
@@ -1630,8 +1897,20 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = manualDebts.value.find((record) => record.id === id)
     manualDebts.value = manualDebts.value.filter((record) => record.id !== id)
     payments.value = payments.value.filter((record) => record.saleId !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Qarzdorlar',
+        entityType: 'manual-debt',
+        recordId: existing.id,
+        summary: `${existing.clientName} uchun eski qarz o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const addPayment = (payload: Omit<PaymentRecord, 'id'>) => {
@@ -1639,9 +1918,18 @@ export const useFactoryAccounting = () => {
       return
     }
 
-    payments.value.unshift({
+    const record = {
       id: createId('pay'),
       ...payload
+    }
+    payments.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Pul Kiritish',
+      entityType: 'payment',
+      recordId: record.id,
+      summary: `${record.clientName} uchun to'lov qo'shildi`,
+      after: record
     })
   }
 
@@ -1653,9 +1941,20 @@ export const useFactoryAccounting = () => {
     const index = payments.value.findIndex((record) => record.id === payload.id)
 
     if (index !== -1) {
-      payments.value[index] = {
+      const previous = payments.value[index]
+      const record = {
         ...payload
       }
+      payments.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Pul Kiritish',
+        entityType: 'payment',
+        recordId: record.id,
+        summary: `${record.clientName} uchun to'lov tahrirlandi`,
+        before: previous,
+        after: record
+      })
     }
   }
 
@@ -1664,7 +1963,19 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = payments.value.find((record) => record.id === id)
     payments.value = payments.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Pul Kiritish',
+        entityType: 'payment',
+        recordId: existing.id,
+        summary: `${existing.clientName} uchun to'lov o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const addBarterRecord = (payload: Omit<BarterRecord, 'id'>) => {
@@ -1674,12 +1985,19 @@ export const useFactoryAccounting = () => {
 
     ensureSupplierContact(payload.supplierName)
     ensureClientContact(payload.clientName)
-    barterRecords.value.unshift(
-      normalizeBarterRecord({
-        id: createId('barter'),
-        ...payload
-      })
-    )
+    const record = normalizeBarterRecord({
+      id: createId('barter'),
+      ...payload
+    })
+    barterRecords.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Barter DB',
+      entityType: 'barter',
+      recordId: record.id,
+      summary: `${record.supplierName} bilan barter qo'shildi`,
+      after: record
+    })
   }
 
   const updateBarterRecord = (payload: BarterRecord) => {
@@ -1692,7 +2010,18 @@ export const useFactoryAccounting = () => {
     if (index !== -1) {
       ensureSupplierContact(payload.supplierName)
       ensureClientContact(payload.clientName)
-      barterRecords.value[index] = normalizeBarterRecord(payload)
+      const previous = barterRecords.value[index]
+      const record = normalizeBarterRecord(payload)
+      barterRecords.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Barter DB',
+        entityType: 'barter',
+        recordId: record.id,
+        summary: `${record.supplierName} bilan barter tahrirlandi`,
+        before: previous,
+        after: record
+      })
     }
   }
 
@@ -1701,7 +2030,19 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = barterRecords.value.find((record) => record.id === id)
     barterRecords.value = barterRecords.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Barter DB',
+        entityType: 'barter',
+        recordId: existing.id,
+        summary: `${existing.supplierName} bilan barter o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const addExpense = (payload: Omit<OperationalExpense, 'id'>) => {
@@ -1709,9 +2050,18 @@ export const useFactoryAccounting = () => {
       return
     }
 
-    expenses.value.unshift({
+    const record = {
       id: createId('exp'),
       ...payload
+    }
+    expenses.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Chiqimlar',
+      entityType: 'expense',
+      recordId: record.id,
+      summary: `${record.category} chiqimi qo'shildi`,
+      after: record
     })
   }
 
@@ -1723,9 +2073,20 @@ export const useFactoryAccounting = () => {
     const index = expenses.value.findIndex((record) => record.id === payload.id)
 
     if (index !== -1) {
-      expenses.value[index] = {
+      const previous = expenses.value[index]
+      const record = {
         ...payload
       }
+      expenses.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Chiqimlar',
+        entityType: 'expense',
+        recordId: record.id,
+        summary: `${record.category} chiqimi tahrirlandi`,
+        before: previous,
+        after: record
+      })
     }
   }
 
@@ -1734,7 +2095,19 @@ export const useFactoryAccounting = () => {
       return
     }
 
+    const existing = expenses.value.find((record) => record.id === id)
     expenses.value = expenses.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Chiqimlar',
+        entityType: 'expense',
+        recordId: existing.id,
+        summary: `${existing.category} chiqimi o'chirildi`,
+        before: existing
+      })
+    }
   }
 
   const buildSummary = (startDate = '', endDate = '', factory: FactoryName | '' = '') => {
@@ -2150,6 +2523,7 @@ export const useFactoryAccounting = () => {
     expenses,
     reminders,
     monthlyArchiveRecords,
+    auditLogs,
     factoryOptions,
     clientContacts,
     supplierContacts,
