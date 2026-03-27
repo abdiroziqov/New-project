@@ -9,7 +9,6 @@ definePageMeta({
 
 const {
   sales,
-  factoryOptions,
   productTypes,
   paymentMethods,
   clientOptions,
@@ -49,7 +48,6 @@ const createFormState = (): Omit<
 const filters = reactive({
   startDate: '',
   endDate: '',
-  factory: '',
   shipmentType: '',
   status: '',
   clientName: ''
@@ -71,7 +69,6 @@ const receiptSuccess = ref('')
 
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
-  { key: 'factory', label: 'Zavod' },
   { key: 'clientName', label: 'Klient' },
   { key: 'productName', label: 'Mahsulot' },
   { key: 'shipmentType', label: 'Yuk turi' },
@@ -91,10 +88,6 @@ const filteredSales = computed(() =>
       }
 
       if (filters.endDate && record.date > filters.endDate) {
-        return false
-      }
-
-      if (filters.factory && record.factory !== filters.factory) {
         return false
       }
 
@@ -459,7 +452,6 @@ const closeDelete = () => {
 const clearFilters = () => {
   filters.startDate = ''
   filters.endDate = ''
-  filters.factory = ''
   filters.shipmentType = ''
   filters.status = ''
   filters.clientName = ''
@@ -556,10 +548,9 @@ watch(
         <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="clearFilters">{{ t('Hammasi') }}</button>
       </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-6">
+      <div class="mt-4 grid gap-3 md:grid-cols-5">
         <AppInput v-model="filters.startDate" type="date" label="Boshlanish sanasi" />
         <AppInput v-model="filters.endDate" type="date" label="Tugash sanasi" />
-        <AppSelect v-model="filters.factory" label="Zavod" :options="factoryOptions" placeholder="Hamma zavod" />
         <AppSelect
           v-model="filters.shipmentType"
           label="Yuk turi"
