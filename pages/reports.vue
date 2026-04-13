@@ -6,12 +6,13 @@ definePageMeta({
   layout: 'dashboard'
 })
 
-const { factoryOptions, buildSummary, monthlyArchiveRecords } = useFactoryAccounting()
+const { factoryOptions, buildSummary, monthlyArchiveRecords, debtorSummaries, resetOperationalDataKeepDebtors } = useFactoryAccounting()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
 const { downloadWorkbook } = useExcelExport()
 const { printWorkbook } = usePdfExport()
 const { t } = useUiLocale()
+const { isProAdmin } = useAuth()
 const normalizeText = (value: string) => value.trim().toLowerCase()
 
 const filters = reactive({
@@ -19,6 +20,9 @@ const filters = reactive({
   endDate: '',
   factory: ''
 })
+
+const resetModalOpen = ref(false)
+const resetStartDate = ref(`${new Date().toISOString().slice(0, 7)}-01`)
 
 const summary = computed(() => buildSummary(filters.startDate, filters.endDate, filters.factory as FactoryName | ''))
 const jamshidWorkerSummary = computed(
@@ -40,6 +44,15 @@ const oybekAdvanceExpense = computed(() =>
 )
 const oybekRemainingSalary = computed(() =>
   Math.max(0, Number(((oybekWorkerSummary.value?.accrued ?? 0) - oybekAdvanceExpense.value).toFixed(2)))
+)
+const openingDebtorCount = computed(() => debtorSummaries.value.filter((record) => record.totalDebt > 0).length)
+const openingDebtAmount = computed(() =>
+  Number(
+    debtorSummaries.value
+      .filter((record) => record.totalDebt > 0)
+      .reduce((sum, record) => sum + record.totalDebt, 0)
+      .toFixed(2)
+  )
 )
 
 const factoryColumns: TableColumn[] = [
@@ -316,6 +329,16 @@ const exportCsv = () => {
   const csv = rows.map((row) => row.join(',')).join('\n')
   downloadFile(csv, 'kunlik-hisobot.csv', 'text/csv')
 }
+
+const openResetModal = () => {
+  resetStartDate.value = `${new Date().toISOString().slice(0, 7)}-01`
+  resetModalOpen.value = true
+}
+
+const confirmOperationalReset = () => {
+  resetOperationalDataKeepDebtors(resetStartDate.value)
+  resetModalOpen.value = false
+}
 </script>
 
 <template>
@@ -326,6 +349,14 @@ const exportCsv = () => {
     </div>
 
     <div class="flex gap-2">
+      <button
+        v-if="isProAdmin"
+        type="button"
+        class="btn-danger"
+        @click="openResetModal"
+      >
+        {{ t('Yangi oy boshlash') }}
+      </button>
       <ExportActions label="Yuklab olish" @excel="exportExcel" @pdf="exportPdf" />
       <button type="button" class="btn-secondary" @click="exportCsv">{{ t('CSV export') }}</button>
       <button type="button" class="btn-primary" @click="exportJson">{{ t('JSON export') }}</button>
@@ -588,4 +619,31 @@ const exportCsv = () => {
       </AppTable>
     </div>
   </section>
+
+  <AppModal
+    :open="resetModalOpen"
+    title="Yangi oy uchun tozalash"
+    size="sm"
+    @close="resetModalOpen = false"
+  >
+    <div class="space-y-4">
+      <p class="text-sm text-slate-600">
+        Qarzdorlar opening balance sifatida saqlanadi, qolgan operatsion yozuvlar o‘chiriladi.
+      </p>
+
+      <AppInput v-model="resetStartDate" type="date" label="Yangi davr sanasi" />
+
+      <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <p><span class="font-semibold">Saqlanadigan qarzdorlar:</span> {{ openingDebtorCount }}</p>
+        <p><span class="font-semibold">Jami qarz:</span> {{ formatSom(openingDebtAmount) }}</p>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn-secondary" @click="resetModalOpen = false">{{ t('Bekor qilish') }}</button>
+        <button type="button" class="btn-danger" @click="confirmOperationalReset">{{ t('Tozalashni boshlash') }}</button>
+      </div>
+    </template>
+  </AppModal>
 </template>

@@ -2111,6 +2111,77 @@ export const useFactoryAccounting = () => {
     }
   }
 
+  const resetOperationalDataKeepDebtors = (startDate: string) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const effectiveStartDate = startDate || new Date().toISOString().slice(0, 10)
+    const preservedDebtSummaries = debtorSummaries.value.filter((record) => record.totalDebt > 0)
+    const preservedClientKeys = new Set(
+      preservedDebtSummaries.map((record) => normalizeClientName(record.clientName))
+    )
+    const before = {
+      dailyRecords: dailyRecords.value.length,
+      incomingLoads: incomingLoads.value.length,
+      sales: sales.value.length,
+      payments: payments.value.length,
+      manualDebts: manualDebts.value.length,
+      barterRecords: barterRecords.value.length,
+      expenses: expenses.value.length,
+      scaleEntries: scaleEntries.value.length,
+      scaleCashEntries: scaleCashEntries.value.length,
+      monthlyArchiveRecords: monthlyArchiveRecords.value.length,
+      reminders: reminders.value.length,
+      totalDebtors: preservedDebtSummaries.length,
+      totalDebtAmount: Number(
+        preservedDebtSummaries.reduce((sum, record) => sum + record.totalDebt, 0).toFixed(2)
+      )
+    }
+
+    const preservedManualDebts = preservedDebtSummaries.map((record) =>
+      normalizeManualDebtRecord({
+        id: createId('debt'),
+        date: effectiveStartDate,
+        factory: record.lastFactory ?? 'Oybek',
+        clientName: record.clientName,
+        amount: record.totalDebt,
+        paidAmount: 0,
+        notes: `${effectiveStartDate} uchun opening balance`
+      })
+    )
+
+    dailyRecords.value = []
+    incomingLoads.value = []
+    scaleEntries.value = []
+    scaleSyncMeta.value = normalizeScaleSyncMeta()
+    scaleCashEntries.value = []
+    sales.value = []
+    payments.value = []
+    barterRecords.value = []
+    expenses.value = []
+    monthlyArchiveRecords.value = []
+    manualDebts.value = preservedManualDebts
+    reminders.value = reminders.value.filter((record) => preservedClientKeys.has(normalizeClientName(record.clientName)))
+    auditLogs.value = []
+
+    appendAuditLog({
+      action: 'update',
+      section: 'System',
+      entityType: 'operational-reset',
+      recordId: `operational-reset-${effectiveStartDate}`,
+      summary: `${effectiveStartDate} dan yangi davr boshlandi, qarzdorlar saqlandi`,
+      before,
+      after: {
+        startDate: effectiveStartDate,
+        preservedDebtors: preservedManualDebts.length,
+        preservedDebtAmount: Number(
+          preservedManualDebts.reduce((sum, record) => sum + record.amount, 0).toFixed(2)
+        )
+      }
+    })
+  }
+
   const buildSummary = (startDate = '', endDate = '', factory: FactoryName | '' = '') => {
     const daily = dailyRecords.value.filter(
       (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
@@ -2585,6 +2656,7 @@ export const useFactoryAccounting = () => {
     addExpense,
     updateExpense,
     removeExpense,
+    resetOperationalDataKeepDebtors,
     buildSummary
   }
 }
