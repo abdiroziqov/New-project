@@ -9,13 +9,8 @@ const { latestDate, todaySummary, overallSummary, todayFactoryBreakdown, recentS
   useFactoryAccounting()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { getSupplierChipClass } = useSupplierHighlight()
-const { isAdmin } = useAuth()
 const { t } = useUiLocale()
 const dashboardWindowDays = ref<15 | 30>(15)
-const dashboardTelegramUsername = '@ilkhomab'
-const dashboardTelegramSending = ref(false)
-const dashboardTelegramError = ref('')
-const dashboardTelegramSuccess = ref('')
 
 const salesColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -126,48 +121,6 @@ const dashboardAlerts = computed(() => {
   return alerts
 })
 
-const dashboardTelegramMessage = computed(() =>
-  [
-    'Ming Bir Hazina nazorat ogohlantirishi',
-    `Davr: ${dashboardWindowLabel.value}`,
-    `Tushum: ${formatSom(dashboardWindowSummary.value.totalRevenue)}`,
-    `Harajat: ${formatSom(dashboardWindowSummary.value.extraExpensesTotal)}`,
-    `Pul kirim: ${formatSom(dashboardWindowSummary.value.moneyInTotal)}`,
-    `Pul chiqim: ${formatSom(dashboardWindowSummary.value.moneyOutTotal)}`,
-    `Foyda: ${formatSom(dashboardWindowSummary.value.totalProfit)}`,
-    `Qarz: ${formatSom(dashboardWindowSummary.value.totalDebt)}`,
-    '',
-    'Ogohlantirishlar:',
-    ...dashboardAlerts.value.map((alert, index) => `${index + 1}. ${alert.title} - ${alert.message}`)
-  ].join('\n')
-)
-
-const sendDashboardTelegramAlert = async () => {
-  if (!isAdmin.value) {
-    return
-  }
-
-  dashboardTelegramSending.value = true
-  dashboardTelegramError.value = ''
-  dashboardTelegramSuccess.value = ''
-
-  try {
-    const response = await $fetch<{ ok: boolean; sentAt: string }>('/api/notifications/telegram/send', {
-      method: 'POST',
-      body: {
-        username: dashboardTelegramUsername,
-        message: dashboardTelegramMessage.value
-      }
-    })
-
-    dashboardTelegramSuccess.value = `Telegram yuborildi: ${formatDate(response.sentAt.slice(0, 10))}`
-  } catch (error) {
-    dashboardTelegramError.value = error instanceof Error ? error.message : 'Telegram yuborishda xato.'
-  } finally {
-    dashboardTelegramSending.value = false
-  }
-}
-
 const saleRows = computed<Record<string, unknown>[]>(() => [...recentSales.value])
 const loadRows = computed<Record<string, unknown>[]>(() => [...recentLoads.value])
 const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses.value])
@@ -257,28 +210,6 @@ const expenseRows = computed<Record<string, unknown>[]>(() => [...recentExpenses
         </button>
       </div>
     </div>
-
-    <article class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p class="text-sm font-semibold text-sky-800">Telegram notification</p>
-          <p class="mt-1 text-sm text-slate-700">Qabul qiluvchi: {{ dashboardTelegramUsername }}</p>
-        </div>
-
-        <button
-          v-if="isAdmin"
-          type="button"
-          class="btn-primary"
-          :disabled="dashboardTelegramSending"
-          @click="sendDashboardTelegramAlert"
-        >
-          {{ dashboardTelegramSending ? 'Yuborilmoqda...' : 'Telegramga yuborish' }}
-        </button>
-      </div>
-
-      <p v-if="dashboardTelegramSuccess" class="mt-3 text-sm text-emerald-700">{{ dashboardTelegramSuccess }}</p>
-      <p v-if="dashboardTelegramError" class="mt-3 text-sm text-rose-700">{{ dashboardTelegramError }}</p>
-    </article>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard :title="`${dashboardWindowDays} kun tushum`" :value="formatSom(dashboardWindowSummary.totalRevenue)" subtitle="sotuv bo'yicha" />

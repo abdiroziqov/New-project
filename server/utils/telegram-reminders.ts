@@ -3,6 +3,7 @@ import { readAccountingState, writeAccountingState } from '~/server/utils/accoun
 
 const monthNames = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
 const reminderTimeZone = process.env.REMINDER_TIMEZONE || 'Asia/Tashkent'
+const telegramDisabledMessage = 'Telegram yuborish o‘chirildi.'
 
 const normalizeName = (value: string) => value.trim().toLowerCase()
 
@@ -194,210 +195,30 @@ const isReminderDue = (reminder: ClientReminderSetting, now = new Date(), timeZo
 }
 
 export const sendTelegramMessage = async (chatId: string, message: string) => {
-  const botToken = getTelegramBotToken()
-
-  if (!botToken) {
-    throw new Error('TELEGRAM_BOT_TOKEN o`rnatilmagan.')
-  }
-
-  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: message
-    })
-  })
-
-  const payload = (await response.json()) as { ok?: boolean; description?: string }
-
-  if (!response.ok || payload.ok === false) {
-    throw new Error(payload.description || 'Telegram yuborishda xato.')
-  }
-
-  return payload
+  void chatId
+  void message
+  throw new Error(telegramDisabledMessage)
 }
 
 export const getTelegramChats = async () => {
-  const botToken = getTelegramBotToken()
-
-  if (!botToken) {
-    throw new Error('TELEGRAM_BOT_TOKEN o`rnatilmagan.')
-  }
-
-  const response = await fetch(`https://api.telegram.org/bot${botToken}/getUpdates?limit=100`)
-  const payload = (await response.json()) as {
-    ok?: boolean
-    description?: string
-    result?: Array<{
-      message?: {
-        date?: number
-        text?: string
-        chat?: {
-          id: number
-          username?: string
-          first_name?: string
-          last_name?: string
-        }
-      }
-      edited_message?: {
-        date?: number
-        text?: string
-        chat?: {
-          id: number
-          username?: string
-          first_name?: string
-          last_name?: string
-        }
-      }
-    }>
-  }
-
-  if (!response.ok || payload.ok === false) {
-    throw new Error(payload.description || 'Telegram update olishda xato.')
-  }
-
-  const chats = new Map<
-    string,
-    {
-      chatId: string
-      username: string
-      fullName: string
-      updatedAtUnix: number
-    }
-  >()
-
-  for (const update of payload.result ?? []) {
-    const message = update.message ?? update.edited_message
-    const chat = message?.chat
-
-    if (!chat?.id) {
-      continue
-    }
-
-    const chatId = String(chat.id)
-    const updatedAtUnix = Number(message?.date ?? 0)
-    const fullName = [chat.first_name, chat.last_name].filter(Boolean).join(' ').trim() || chat.username || chatId
-    const current = chats.get(chatId)
-
-    if (!current || updatedAtUnix >= current.updatedAtUnix) {
-      chats.set(chatId, {
-        chatId,
-        username: chat.username ?? '',
-        fullName,
-        updatedAtUnix
-      })
-    }
-  }
-
-  return Array.from(chats.values()).sort((left, right) => right.updatedAtUnix - left.updatedAtUnix)
+  return []
 }
 
 export const sendTelegramMessageToUsername = async (username: string, message: string) => {
-  const normalizedUsername = normalizeTelegramUsername(username)
-
-  if (!normalizedUsername) {
-    throw new Error('Telegram user yuborilmadi.')
-  }
-
-  const chat = (await getTelegramChats()).find((item) => normalizeTelegramUsername(item.username) === normalizedUsername)
-
-  if (!chat?.chatId) {
-    throw new Error(`@${normalizedUsername} uchun chat topilmadi. Botga bir marta start bosilishi kerak.`)
-  }
-
-  await sendTelegramMessage(chat.chatId, message)
-
-  return {
-    chatId: chat.chatId,
-    username: chat.username,
-    sentAt: new Date().toISOString()
-  }
+  void username
+  void message
+  throw new Error(telegramDisabledMessage)
 }
 
 export const sendTelegramReminderToClient = async (clientName: string, customMessage?: string) => {
-  const snapshot = await readAccountingState()
-  const contact = findClientContact(snapshot, clientName)
-
-  if (!contact?.telegramChatId) {
-    throw new Error('Klient uchun Telegram chat ID kiritilmagan.')
-  }
-
-  const message = customMessage?.trim() || buildTelegramDebtReminderMessage(snapshot, clientName, contact)
-
-  if (!message) {
-    throw new Error('Yuborish uchun xabar topilmadi.')
-  }
-
-  await sendTelegramMessage(contact.telegramChatId, message)
-
-  const reminderIndex = snapshot.reminders.findIndex(
-    (record) => normalizeName(record.clientName) === normalizeName(clientName)
-  )
-  const sentAt = new Date().toISOString()
-
-  if (reminderIndex !== -1) {
-    snapshot.reminders[reminderIndex] = {
-      ...snapshot.reminders[reminderIndex],
-      lastSentAt: sentAt
-    }
-    await writeAccountingState(snapshot)
-  }
-
-  return {
-    sentAt,
-    message,
-    contact
-  }
+  void clientName
+  void customMessage
+  throw new Error(telegramDisabledMessage)
 }
 
 export const processDueTelegramReminders = async () => {
-  const snapshot = await readAccountingState()
-  const dueReminders = snapshot.reminders.filter((reminder) => {
-    const contact = findClientContact(snapshot, reminder.clientName)
-    const debtSummary = buildDebtSummary(snapshot, reminder.clientName)
-
-    return Boolean(contact?.telegramChatId) && Boolean(debtSummary?.totalDebt) && isReminderDue(reminder)
-  })
-
-  if (!dueReminders.length) {
-    return {
-      sentCount: 0,
-      skipped: 0
-    }
-  }
-
-  let changed = false
-  let sentCount = 0
-  let skipped = 0
-
-  for (const reminder of dueReminders) {
-    const contact = findClientContact(snapshot, reminder.clientName)
-    const message = buildTelegramDebtReminderMessage(snapshot, reminder.clientName, contact)
-
-    if (!contact?.telegramChatId || !message) {
-      skipped += 1
-      continue
-    }
-
-    try {
-      await sendTelegramMessage(contact.telegramChatId, message)
-      reminder.lastSentAt = new Date().toISOString()
-      changed = true
-      sentCount += 1
-    } catch (error) {
-      console.error(`Telegram yuborish xatosi: ${reminder.clientName}`, error)
-    }
-  }
-
-  if (changed) {
-    await writeAccountingState(snapshot)
-  }
-
   return {
-    sentCount,
-    skipped
+    sentCount: 0,
+    skipped: 0
   }
 }

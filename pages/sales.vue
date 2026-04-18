@@ -17,9 +17,7 @@ const {
   updateSale,
   removeSale,
   clientDirectory,
-  getClientProfile,
-  buildSaleReceiptMessage,
-  buildTelegramLink
+  getClientProfile
 } = useFactoryAccounting()
 const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
@@ -60,12 +58,6 @@ const formError = ref('')
 
 const deleteDialogOpen = ref(false)
 const selectedSale = ref<SaleRecord | null>(null)
-const receiptModalOpen = ref(false)
-const receiptSale = ref<SaleRecord | null>(null)
-const copiedReceipt = ref(false)
-const receiptSending = ref(false)
-const receiptError = ref('')
-const receiptSuccess = ref('')
 
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -423,14 +415,6 @@ const askDelete = (row: Record<string, unknown>) => {
   deleteDialogOpen.value = true
 }
 
-const openReceiptModal = (row: Record<string, unknown>) => {
-  receiptSale.value = row as SaleRecord
-  copiedReceipt.value = false
-  receiptError.value = ''
-  receiptSuccess.value = ''
-  receiptModalOpen.value = true
-}
-
 const confirmDelete = () => {
   if (!isAdmin.value) {
     return
@@ -455,48 +439,6 @@ const clearFilters = () => {
   filters.shipmentType = ''
   filters.status = ''
   filters.clientName = ''
-}
-
-const receiptProfile = computed(() => getClientProfile(receiptSale.value?.clientName ?? ''))
-const receiptPhone = computed(() => receiptProfile.value.contact?.phone ?? '')
-const receiptTelegramChatId = computed(() => receiptProfile.value.contact?.telegramChatId ?? '')
-const receiptTelegramUsername = computed(() => receiptProfile.value.contact?.telegramUsername ?? '')
-const receiptMessage = computed(() => (receiptSale.value ? buildSaleReceiptMessage(receiptSale.value) : ''))
-const receiptTelegramLink = computed(() => buildTelegramLink(receiptTelegramUsername.value))
-
-const copyReceiptMessage = async () => {
-  if (!receiptMessage.value || !import.meta.client || !navigator.clipboard) {
-    return
-  }
-
-  await navigator.clipboard.writeText(receiptMessage.value)
-  copiedReceipt.value = true
-}
-
-const sendReceiptTelegram = async () => {
-  if (!isAdmin.value || !receiptSale.value) {
-    return
-  }
-
-  receiptSending.value = true
-  receiptError.value = ''
-  receiptSuccess.value = ''
-
-  try {
-    await $fetch('/api/notifications/telegram/send', {
-      method: 'POST',
-      body: {
-        clientName: receiptSale.value.clientName,
-        message: receiptMessage.value
-      }
-    })
-
-    receiptSuccess.value = 'Telegram yuborildi.'
-  } catch (error) {
-    receiptError.value = error instanceof Error ? error.message : 'Telegram yuborishda xato.'
-  } finally {
-    receiptSending.value = false
-  }
 }
 
 const applyLastSaleDefaults = () => {
@@ -619,7 +561,6 @@ watch(
 
       <template #cell-actions="{ row }">
         <div class="flex justify-end gap-2">
-          <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openReceiptModal(row)">TG</button>
           <template v-if="isAdmin">
             <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openEditModal(row)">{{ t('Tahrirlash') }}</button>
             <button type="button" class="btn-danger !px-3 !py-1.5 text-xs" @click="askDelete(row)">{{ t("O'chirish") }}</button>
@@ -838,51 +779,4 @@ watch(
     @confirm="confirmDelete"
     @cancel="closeDelete"
   />
-
-  <AppModal :open="receiptModalOpen" title="Telegram chek" size="lg" @close="receiptModalOpen = false">
-    <div class="space-y-4">
-      <div class="grid gap-3 md:grid-cols-4">
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Klient</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ receiptSale?.clientName || '-' }}</p>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Telefon</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ receiptPhone || '-' }}</p>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Telegram chat ID</p>
-          <p class="mt-1 text-sm font-semibold text-slate-900">{{ receiptTelegramChatId || '-' }}</p>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Qarz</p>
-          <p class="mt-1 text-sm font-semibold text-rose-700">{{ formatSom(receiptSale?.remainingAmount ?? 0) }}</p>
-        </div>
-      </div>
-
-      <div class="rounded-2xl bg-slate-950 p-4 text-sm text-white">
-        <pre class="whitespace-pre-wrap font-mono">{{ receiptMessage }}</pre>
-      </div>
-
-      <div class="rounded-2xl bg-slate-50 p-4 text-sm">
-        <p class="text-xs text-slate-500">Telegram username</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ receiptTelegramUsername ? `@${receiptTelegramUsername}` : '-' }}</p>
-      </div>
-
-      <p v-if="copiedReceipt" class="text-sm text-emerald-700">Xabar matni copy qilindi.</p>
-      <p v-if="receiptSuccess" class="text-sm text-emerald-700">{{ receiptSuccess }}</p>
-      <p v-if="receiptError" class="text-sm text-rose-700">{{ receiptError }}</p>
-      <p v-if="!receiptTelegramChatId" class="text-sm text-amber-700">Telegram yuborish uchun klient kartasiga chat ID kiriting.</p>
-    </div>
-
-    <template #footer>
-      <div class="flex flex-wrap justify-end gap-2">
-        <NuxtLink v-if="receiptTelegramLink" :to="receiptTelegramLink" target="_blank" class="btn-secondary">TG profil</NuxtLink>
-        <button type="button" class="btn-secondary" @click="copyReceiptMessage">Copy</button>
-        <button type="button" class="btn-primary" :disabled="!receiptTelegramChatId || receiptSending || !isAdmin" @click="sendReceiptTelegram">
-          {{ receiptSending ? 'Yuborilmoqda...' : 'Telegram yuborish' }}
-        </button>
-      </div>
-    </template>
-  </AppModal>
 </template>

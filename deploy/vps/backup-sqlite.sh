@@ -19,15 +19,7 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
 fi
 
 notify_telegram() {
-  local message="${1:-}"
-
-  if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${BACKUP_TELEGRAM_CHAT_ID:-}" ] || [ -z "$message" ]; then
-    return 0
-  fi
-
-  curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-    -H 'content-type: application/json' \
-    -d "{\"chat_id\":\"${BACKUP_TELEGRAM_CHAT_ID}\",\"text\":\"${message}\"}" >/dev/null 2>&1 || true
+  return 0
 }
 
 fail() {

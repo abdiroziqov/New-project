@@ -30,9 +30,7 @@ Project fayllarini shu papkaga ko'chiring.
 
 ```bash
 cat > .env <<'EOF'
-TELEGRAM_BOT_TOKEN=your_bot_token
 REMINDER_TIMEZONE=Asia/Tashkent
-BACKUP_TELEGRAM_CHAT_ID=your_chat_id
 EOF
 ```
 
@@ -90,7 +88,6 @@ Bu misolda:
 - har kuni `03:00` da backup olinadi
 - backup `30 kun` saqlanadi
 - undan eski backup fayllar avtomatik o'chadi
-- `.env` ichida `BACKUP_TELEGRAM_CHAT_ID` bo'lsa, backup natijasi Telegramga yuboriladi
 
 Restore:
 

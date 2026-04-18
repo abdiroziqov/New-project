@@ -12,6 +12,7 @@ const { formatSom, formatTons, formatDate } = useFormatting()
 const { downloadWorkbook } = useExcelExport()
 const { printWorkbook } = usePdfExport()
 const { t } = useUiLocale()
+const telegramEnabled = false
 
 const filters = reactive({
   search: ''
@@ -35,18 +36,25 @@ const form = reactive({
   notes: ''
 })
 
-const columns: TableColumn[] = [
-  { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
-  { key: 'phone', label: 'Telefon' },
-  { key: 'telegram', label: 'Telegram' },
-  { key: 'balanceType', label: 'Balans turi' },
-  { key: 'balanceAmount', label: 'Balans', align: 'right' },
-  { key: 'totalTons', label: 'Jami tonna', align: 'right' },
-  { key: 'averagePricePerTon', label: "O'rtacha narx / kg", align: 'right' },
-  { key: 'saleCount', label: 'Sotuv soni', align: 'right' },
-  { key: 'lastPurchaseDate', label: 'Oxirgi sana' },
-  { key: 'actions', label: 'Amal', align: 'right' }
-]
+const columns = computed<TableColumn[]>(() => {
+  const base: TableColumn[] = [
+    { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
+    { key: 'phone', label: 'Telefon' },
+    { key: 'balanceType', label: 'Balans turi' },
+    { key: 'balanceAmount', label: 'Balans', align: 'right' },
+    { key: 'totalTons', label: 'Jami tonna', align: 'right' },
+    { key: 'averagePricePerTon', label: "O'rtacha narx / kg", align: 'right' },
+    { key: 'saleCount', label: 'Sotuv soni', align: 'right' },
+    { key: 'lastPurchaseDate', label: 'Oxirgi sana' },
+    { key: 'actions', label: 'Amal', align: 'right' }
+  ]
+
+  if (telegramEnabled) {
+    base.splice(2, 0, { key: 'telegram', label: 'Telegram' })
+  }
+
+  return base
+})
 
 const salesColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -100,8 +108,6 @@ const buildClientSheets = () => {
       columns: [
         { key: 'clientName', label: 'Klient' },
         { key: 'phone', label: 'Telefon' },
-        { key: 'telegramChatId', label: 'Telegram Chat ID' },
-        { key: 'telegramUsername', label: 'Telegram user' },
         { key: 'address', label: 'Manzil' },
         { key: 'balanceLabel', label: 'Balans turi' },
         { key: 'balanceAmount', label: 'Balans' },
@@ -115,8 +121,6 @@ const buildClientSheets = () => {
       rows: filteredClients.value.map((client) => ({
         clientName: client.clientName,
         phone: client.phone,
-        telegramChatId: client.telegramChatId,
-        telegramUsername: client.telegramUsername ? `@${client.telegramUsername}` : '',
         address: client.address,
         balanceLabel: balanceLabel(client.balanceType),
         balanceAmount: Math.round(client.balanceAmount),
@@ -399,7 +403,7 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
           <span :class="['font-semibold', balanceToneClass(value)]">{{ balanceLabel(value) }}</span>
         </template>
 
-        <template #cell-telegram="{ row }">
+        <template v-if="telegramEnabled" #cell-telegram="{ row }">
           <span v-if="row.telegramChatId" class="text-xs font-semibold text-sky-700">
             {{ row.telegramUsername ? `@${row.telegramUsername}` : row.telegramChatId }}
           </span>
@@ -467,48 +471,8 @@ const applyTelegramChat = (chat: { chatId: string; username: string }) => {
         required
       />
       <AppInput v-model="form.phone" mask="phone" label="Telefon" placeholder="Masalan, +998 90 123 45 67" autocomplete="tel" />
-      <div class="grid gap-3 md:grid-cols-[1fr_auto]">
-        <AppInput v-model="form.telegramChatId" label="Telegram chat ID" placeholder="Masalan, 123456789" />
-        <div class="flex items-end">
-          <button type="button" class="btn-secondary w-full" @click="loadTelegramChats">
-            {{ telegramLookupLoading ? t('Yuklanmoqda...') : t('Telegramdan olish') }}
-          </button>
-        </div>
-      </div>
-      <AppInput v-model="form.telegramUsername" label="Telegram user" placeholder="Masalan, begzod_92" />
       <AppInput v-model="form.address" label="Manzil" placeholder="Masalan, Qumqo'rg'on" />
       <AppInput v-model="form.notes" label="Izoh" placeholder="Doimiy klient yoki maxsus eslatma" />
-
-      <div v-if="telegramLookupError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-        {{ telegramLookupError }}
-      </div>
-
-      <div v-if="telegramChats.length" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Oxirgi Telegram chatlar</p>
-        <div class="mt-3 space-y-2">
-          <button
-            v-for="chat in telegramChats"
-            :key="chat.chatId"
-            type="button"
-            class="flex w-full items-start justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-brand-300 hover:bg-brand-50"
-            @click="applyTelegramChat(chat)"
-          >
-            <div>
-              <p class="text-sm font-semibold text-slate-900">
-                {{ chat.fullName }}
-                <span v-if="chat.username" class="text-sky-700"> · @{{ chat.username }}</span>
-              </p>
-              <p class="mt-1 text-xs text-slate-500">{{ chat.chatId }}</p>
-              <p v-if="chat.lastText" class="mt-1 text-xs text-slate-400">{{ chat.lastText }}</p>
-            </div>
-            <span class="text-xs font-semibold text-brand-700">{{ t('Tanlash') }}</span>
-          </button>
-        </div>
-      </div>
-
-      <p class="text-xs text-slate-500">
-        Telegram bot yozishi uchun klient botga bir marta yozib qo'yishi va shu yerga `chat id` kiritilishi kerak.
-      </p>
 
       <p v-if="formError" class="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
         {{ formError }}

@@ -47,6 +47,7 @@ const { isAdmin } = useAuth()
 const { formatSom, formatTons, formatDate } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
 const { t } = useUiLocale()
+const telegramEnabled = false
 
 const filters = reactive({
   search: '',
@@ -94,16 +95,23 @@ const telegramError = ref('')
 const telegramSuccess = ref('')
 const telegramSending = ref(false)
 
-const debtorColumns: TableColumn[] = [
-  { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
-  { key: 'phone', label: 'Telefon' },
-  { key: 'totalTons', label: 'Tonna', align: 'right' },
-  { key: 'totalRevenue', label: 'Jami yozuv', align: 'right' },
-  { key: 'totalPaid', label: 'To`langan', align: 'right' },
-  { key: 'totalDebt', label: 'Qarz', align: 'right' },
-  { key: 'reminder', label: 'TG eslatma' },
-  { key: 'actions', label: 'Amal', align: 'right' }
-]
+const debtorColumns = computed<TableColumn[]>(() => {
+  const columns: TableColumn[] = [
+    { key: 'clientName', label: 'Klient', headerClass: 'font-bold text-brand-700' },
+    { key: 'phone', label: 'Telefon' },
+    { key: 'totalTons', label: 'Tonna', align: 'right' },
+    { key: 'totalRevenue', label: 'Jami yozuv', align: 'right' },
+    { key: 'totalPaid', label: 'To`langan', align: 'right' },
+    { key: 'totalDebt', label: 'Qarz', align: 'right' },
+    { key: 'actions', label: 'Amal', align: 'right' }
+  ]
+
+  if (telegramEnabled) {
+    columns.splice(columns.length - 1, 0, { key: 'reminder', label: 'TG eslatma' })
+  }
+
+  return columns
+})
 
 const invoiceColumns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -633,17 +641,16 @@ const clearFilters = () => {
   <section>
     <h2 class="page-title">{{ t('Qarzdorlar') }}</h2>
     <p class="page-subtitle">
-      {{ t("Eski qarzlarni ham qo'lda qo'shish, keyin to'lov bilan yopish va Telegram eslatmalar shu yerda.") }}
+      {{ t("Eski qarzlarni qo'lda qo'shish va keyin to'lov bilan yopish shu yerda.") }}
     </p>
     <AdminReadOnlyBanner v-if="!isAdmin" class="mt-3" />
   </section>
 
-  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
     <StatCard title="Jami qarz" :value="formatSom(summary.totalDebt)" subtitle="filtr bo'yicha" />
     <StatCard title="Qarzdor klientlar" :value="summary.totalClients" subtitle="ochiq qarzi borlar" />
     <StatCard title="Ochiq yozuvlar" :value="summary.totalInvoices" subtitle="sotuv va eski qarz" />
     <StatCard title="To'lovlar" :value="formatSom(summary.totalPayments)" subtitle="filtrlangan to'lov tarixi" />
-    <StatCard title="Aktiv TG" :value="summary.activeReminders" subtitle="yoqilgan eslatmalar" />
   </section>
 
   <section class="panel p-4">
@@ -696,7 +703,7 @@ const clearFilters = () => {
           <span class="font-semibold text-rose-700">{{ formatSom(Number(value)) }}</span>
         </template>
 
-        <template #cell-reminder="{ value }">
+        <template v-if="telegramEnabled" #cell-reminder="{ value }">
           <span class="text-xs text-slate-500">{{ value }}</span>
         </template>
 
@@ -718,9 +725,8 @@ const clearFilters = () => {
             >
               O'chirish
             </button>
-            <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openTelegramModal(String(row.clientName))">TG</button>
             <button
-              v-if="isAdmin"
+              v-if="telegramEnabled && isAdmin"
               type="button"
               class="btn-secondary !px-3 !py-1.5 text-xs"
               @click="openReminderModal(String(row.clientName))"
@@ -791,16 +797,13 @@ const clearFilters = () => {
             >
               O'chirish
             </button>
-            <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="openTelegramModal(String(row.clientName))">
-              TG
-            </button>
           </div>
         </template>
       </AppTable>
     </article>
   </section>
 
-  <section v-if="false" class="panel p-5">
+  <section v-if="telegramEnabled" class="panel p-5">
     <header class="mb-4">
       <h3 class="text-base font-semibold text-slate-900">{{ t('Aktiv Telegram eslatmalar') }}</h3>
       <p class="text-xs text-slate-500">Schedule saqlanadi. Bot token va klient chat id kiritilsa server o'zi yuboradi.</p>
@@ -943,7 +946,7 @@ const clearFilters = () => {
     </template>
   </AppModal>
 
-  <AppModal :open="reminderModalOpen" title="Telegram eslatma sozlamasi" size="sm" @close="reminderModalOpen = false">
+  <AppModal v-if="telegramEnabled" :open="reminderModalOpen" title="Telegram eslatma sozlamasi" size="sm" @close="reminderModalOpen = false">
     <div class="space-y-4">
       <div class="rounded-2xl bg-slate-50 p-4 text-sm">
         <div class="flex items-center justify-between">
@@ -994,7 +997,7 @@ const clearFilters = () => {
     </template>
   </AppModal>
 
-  <AppModal :open="telegramModalOpen" title="Telegram eslatma" size="lg" @close="telegramModalOpen = false">
+  <AppModal v-if="telegramEnabled" :open="telegramModalOpen" title="Telegram eslatma" size="lg" @close="telegramModalOpen = false">
     <div class="space-y-4">
       <div class="grid gap-3 md:grid-cols-4">
         <div class="rounded-2xl bg-slate-50 px-4 py-3">
