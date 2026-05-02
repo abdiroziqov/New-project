@@ -53,6 +53,7 @@ const lossAmount = computed(() => Math.max(-summary.value.totalProfit, 0))
 const marketExpense = computed(() => getExpenseTotal('Bozorlik'))
 const loadingExpense = computed(() => getExpenseTotal('Yuklash'))
 const taxExpense = computed(() => getExpenseTotal('Soliq'))
+const supplierPaymentExpense = computed(() => getExpenseTotal("Ta'minotchi to'lovi"))
 const otherExpense = computed(() => getExpenseTotal('Boshqa'))
 const foodExpense = computed(() => getExpenseTotal('Ovqat'))
 const electricityExpense = computed(() => getExpenseTotal('Svet'))
@@ -189,6 +190,11 @@ const expenseCards = computed(() => [
     title: 'Soliq',
     value: formatSom(taxExpense.value),
     subtitle: 'oy davomida'
+  },
+  {
+    title: "Ta'minotchi to`lovi",
+    value: formatSom(supplierPaymentExpense.value),
+    subtitle: 'supplierga berilgan pul'
   },
   {
     title: 'Svet',

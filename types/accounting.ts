@@ -13,6 +13,7 @@ export type ExpenseCategory =
   | 'Svet'
   | 'Bozorlik'
   | 'Yuklash'
+  | "Ta'minotchi to'lovi"
   | 'Sementovoz kredit'
   | 'Panel kredit'
   | 'Kobalt kredit'

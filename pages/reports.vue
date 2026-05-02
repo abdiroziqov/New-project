@@ -14,6 +14,13 @@ const { printWorkbook } = usePdfExport()
 const { t } = useUiLocale()
 const { isProAdmin } = useAuth()
 const normalizeText = (value: string) => value.trim().toLowerCase()
+const getExpenseTotal = (category: import('~/types/accounting').ExpenseCategory) =>
+  Number(
+    summary.value.expenseRecords
+      .filter((record) => record.category === category)
+      .reduce((sum, record) => sum + record.amount, 0)
+      .toFixed(2)
+  )
 
 const filters = reactive({
   startDate: '',
@@ -45,6 +52,8 @@ const oybekAdvanceExpense = computed(() =>
 const oybekRemainingSalary = computed(() =>
   Math.max(0, Number(((oybekWorkerSummary.value?.accrued ?? 0) - oybekAdvanceExpense.value).toFixed(2)))
 )
+const supplierPaymentExpense = computed(() => getExpenseTotal("Ta'minotchi to'lovi"))
+const otherCategoryExpense = computed(() => getExpenseTotal('Boshqa'))
 const openingDebtorCount = computed(() => debtorSummaries.value.filter((record) => record.totalDebt > 0).length)
 const openingDebtAmount = computed(() =>
   Number(
@@ -260,7 +269,9 @@ const buildReportSheets = () => {
         { metric: 'Jamshid ishchi jami', value: Math.round(jamshidWorkerSummary.value?.amount ?? 0) },
         { metric: 'Oybek ishchi (oylik)', value: Math.round(oybekWorkerSummary.value?.accrued ?? 0) },
         { metric: 'Oybek avans', value: Math.round(oybekAdvanceExpense.value) },
-        { metric: 'Oybek qolgan oylik', value: Math.round(oybekRemainingSalary.value) }
+        { metric: 'Oybek qolgan oylik', value: Math.round(oybekRemainingSalary.value) },
+        { metric: "Ta'minotchi to'lovi", value: Math.round(supplierPaymentExpense.value) },
+        { metric: 'Boshqa chiqim', value: Math.round(otherCategoryExpense.value) }
       ]
     },
     {
@@ -311,6 +322,8 @@ const exportCsv = () => {
     ['marketCost', summary.value.productionComponentTotals.market],
     ['jamshidWorkerDaily', jamshidWorkerSummary.value?.paidNow ?? 0],
     ['oybekWorkerMonthly', oybekWorkerSummary.value?.accrued ?? 0],
+    ['supplierPaymentExpense', supplierPaymentExpense.value],
+    ['otherCategoryExpense', otherCategoryExpense.value],
     ['foodCost', summary.value.productionComponentTotals.food],
     ['electricityCost', summary.value.productionComponentTotals.electricity],
     ['loadingCost', summary.value.productionComponentTotals.loading]
@@ -399,7 +412,8 @@ const confirmOperationalReset = () => {
     <StatCard title="Pitaniya" :value="formatSom(summary.productionComponentTotals.food)" subtitle="ovqat xarajati" />
     <StatCard title="Svet" :value="formatSom(summary.productionComponentTotals.electricity)" subtitle="elektr energiya" />
     <StatCard title="Ortib berish" :value="formatSom(summary.productionComponentTotals.loading)" subtitle="faqat qoplik" />
-    <StatCard title="Boshqa chiqim" :value="formatSom(summary.totalOperationalExpenses)" subtitle="qo'shimcha xarajatlar" />
+    <StatCard title="Ta'minotchi to'lovi" :value="formatSom(supplierPaymentExpense)" subtitle="supplierga berilgan pul" />
+    <StatCard title="Boshqa chiqim" :value="formatSom(otherCategoryExpense)" subtitle="boshqa kategoriyalar" />
   </section>
 
   <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

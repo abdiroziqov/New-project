@@ -28,14 +28,17 @@ const {
   paymentMethods,
   expenseCategories,
   clientOptions,
+  supplierContacts,
   sales,
   manualDebts,
   overallSummary,
   addPayment,
   updateSale,
   updateManualDebt,
+  applySupplierPayment,
   addExpense,
-  getClientProfile
+  getClientProfile,
+  getSupplierProfile
 } = useFactoryAccounting()
 const { formatSom, formatDate, formatTons } = useFormatting()
 const { t } = useUiLocale()
@@ -57,6 +60,14 @@ const clientAdvanceForm = reactive({
   notes: ''
 })
 
+const supplierPaymentForm = reactive({
+  date: latestDate.value,
+  supplierName: '',
+  amount: 0,
+  paymentMethod: 'Naqd' as PaymentMethod,
+  notes: ''
+})
+
 const expenseForm = reactive<Omit<OperationalExpense, 'id'>>({
   date: latestDate.value,
   factory: 'Oybek',
@@ -70,7 +81,15 @@ const expenseForm = reactive<Omit<OperationalExpense, 'id'>>({
 const infoMessage = ref('')
 const clientAdvanceError = ref('')
 const clientPaymentError = ref('')
+const supplierPaymentError = ref('')
 const expenseError = ref('')
+
+const supplierOptions = computed(() =>
+  supplierContacts.value.map((contact) => ({
+    label: contact.name,
+    value: contact.name
+  }))
+)
 
 const showMessage = (message: string) => {
   infoMessage.value = message
@@ -133,6 +152,7 @@ const selectedClientEntry = computed(() =>
 
 const activeClientProfile = computed(() => getClientProfile(clientPaymentForm.clientName))
 const advanceClientProfile = computed(() => getClientProfile(clientAdvanceForm.clientName))
+const activeSupplierProfile = computed(() => getSupplierProfile(supplierPaymentForm.supplierName))
 
 const paymentMethodCards = computed(() =>
   overallSummary.value.paymentMethodBreakdown.map((item) => ({
@@ -159,6 +179,15 @@ const resetClientAdvanceForm = () => {
   clientAdvanceForm.paymentMethod = 'Naqd'
   clientAdvanceForm.notes = ''
   clientAdvanceError.value = ''
+}
+
+const resetSupplierPaymentForm = () => {
+  supplierPaymentForm.date = latestDate.value
+  supplierPaymentForm.supplierName = ''
+  supplierPaymentForm.amount = 0
+  supplierPaymentForm.paymentMethod = 'Naqd'
+  supplierPaymentForm.notes = ''
+  supplierPaymentError.value = ''
 }
 
 const resetExpenseForm = () => {
@@ -202,6 +231,33 @@ const saveClientAdvance = () => {
 
   resetClientAdvanceForm()
   showMessage('Klient avansi qo`shildi.')
+}
+
+const saveSupplierPayment = () => {
+  supplierPaymentError.value = ''
+
+  if (!supplierPaymentForm.date || !supplierPaymentForm.supplierName.trim()) {
+    supplierPaymentError.value = 'Ta`minotchi va sanani tanlang.'
+    return
+  }
+
+  const amount = Number(supplierPaymentForm.amount)
+
+  if (amount <= 0) {
+    supplierPaymentError.value = 'Summa 0 dan katta bo`lishi kerak.'
+    return
+  }
+
+  applySupplierPayment({
+    date: supplierPaymentForm.date,
+    supplierName: supplierPaymentForm.supplierName.trim(),
+    amount,
+    paymentMethod: supplierPaymentForm.paymentMethod,
+    notes: supplierPaymentForm.notes.trim()
+  })
+
+  resetSupplierPaymentForm()
+  showMessage('Ta`minotchiga to`lov qo`shildi.')
 }
 
 const saveClientPayment = () => {
@@ -392,6 +448,70 @@ watch(
     </div>
   </section>
 
+  <section class="panel p-5">
+    <header class="mb-4">
+      <h3 class="text-base font-semibold text-slate-900">{{ t("Ta'minotchiga to'lov") }}</h3>
+      <p class="text-sm text-slate-500">{{ t("Supplierga pul o'tkazsangiz, shu yerga yozing. Tizim supplier qarzini kamaytiradi, ortiqcha to'lov bo'lsa avansga o'tkazadi.") }}</p>
+    </header>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <AppInput v-model="supplierPaymentForm.date" type="date" label="Sana" :invalid="Boolean(supplierPaymentError) && !supplierPaymentForm.date" />
+      <AppSelect
+        v-model="supplierPaymentForm.supplierName"
+        label="Ta'minotchi"
+        :options="supplierOptions"
+        :translate-options="false"
+        :searchable="true"
+        placeholder="Ta'minotchini tanlang"
+        :invalid="Boolean(supplierPaymentError) && !supplierPaymentForm.supplierName.trim()"
+      />
+      <AppInput
+        v-model="supplierPaymentForm.amount"
+        type="number"
+        min="0"
+        step="0.01"
+        label="Summa"
+        :invalid="Boolean(supplierPaymentError) && Number(supplierPaymentForm.amount) <= 0"
+      />
+      <AppSelect
+        v-model="supplierPaymentForm.paymentMethod"
+        label="To'lov turi"
+        :options="paymentMethods.map((item) => ({ label: item, value: item }))"
+      />
+      <AppInput v-model="supplierPaymentForm.notes" label="Izoh" placeholder="Masalan, 100 mln o'tkazildi" />
+    </div>
+
+    <div v-if="activeSupplierProfile.summary" class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div class="grid gap-3 md:grid-cols-4">
+        <div>
+          <p class="text-xs text-slate-500">Jami summa</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatSom(activeSupplierProfile.summary.totalAmount) }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">To'langan</p>
+          <p class="mt-1 text-sm font-semibold text-slate-900">{{ formatSom(activeSupplierProfile.summary.totalPaid) }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">Biz qarzmiz</p>
+          <p class="mt-1 text-sm font-semibold text-rose-700">{{ formatSom(activeSupplierProfile.summary.totalDebt) }}</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-500">U qarz</p>
+          <p class="mt-1 text-sm font-semibold text-brand-700">{{ formatSom(activeSupplierProfile.summary.totalAdvance) }}</p>
+        </div>
+      </div>
+    </div>
+
+    <p v-if="supplierPaymentError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+      {{ supplierPaymentError }}
+    </p>
+
+    <div class="mt-4 flex justify-end gap-2">
+      <button type="button" class="btn-secondary" @click="resetSupplierPaymentForm">{{ t('Tozalash') }}</button>
+      <button type="button" class="btn-primary" @click="saveSupplierPayment">{{ t("To'lovni kiritish") }}</button>
+    </div>
+  </section>
+
   <section class="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
     <article class="panel p-5">
       <header class="mb-4">
@@ -542,7 +662,7 @@ watch(
       </div>
 
       <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        {{ t("Ta'minotchiga pul berilganda `Tosh Kirimi` sahifasidagi yozuvni tahrirlang. U yerda supplier qarzi va qoldiq avtomatik yangilanadi.") }}
+        {{ t("Ta'minotchi to'lovi uchun yuqoridagi alohida bo'limdan foydalaning. Qo'lda chiqim esa umumiy zavod xarajatlari uchun qoldi.") }}
       </div>
     </article>
   </section>

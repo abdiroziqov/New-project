@@ -97,6 +97,7 @@ export const expenseCategories: ExpenseCategory[] = [
   'Svet',
   'Bozorlik',
   'Yuklash',
+  "Ta'minotchi to'lovi",
   'Sementovoz kredit',
   'Panel kredit',
   'Kobalt kredit',
@@ -2046,6 +2047,108 @@ export const useFactoryAccounting = () => {
     }
   }
 
+  const applySupplierPayment = (payload: {
+    date: string
+    supplierName: string
+    amount: number
+    paymentMethod: PaymentMethod
+    notes: string
+  }) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const supplierName = payload.supplierName.trim()
+    const amount = roundAmount(payload.amount)
+
+    if (!supplierName || amount <= 0) {
+      return
+    }
+
+    ensureSupplierContact(supplierName)
+
+    const supplierKey = normalizeContactName(supplierName)
+    const supplierSummary = supplierSummaries.value.find((summary) => normalizeContactName(summary.supplierName) === supplierKey) ?? null
+    const supplierFactory = supplierSummary?.lastFactory ?? ''
+    const beforeSummary = supplierSummary ? clone(supplierSummary) : null
+
+    let remainingAmount = amount
+
+    const matchingLoadIndexes = incomingLoads.value
+      .map((record, index) => ({ record, index }))
+      .filter(({ record }) => normalizeContactName(record.supplier) === supplierKey && record.remainingAmount > 0)
+      .sort((left, right) => left.record.date.localeCompare(right.record.date) || left.record.id.localeCompare(right.record.id))
+
+    matchingLoadIndexes.forEach(({ record, index }) => {
+      if (remainingAmount <= 0) {
+        return
+      }
+
+      const appliedAmount = Math.min(record.remainingAmount, remainingAmount)
+      const updatedRecord = normalizeIncomingLoadRecord(
+        {
+          ...record,
+          paidAmount: roundAmount(record.paidAmount + appliedAmount)
+        },
+        Number(record.pricePerTon),
+        roundAmount(record.paidAmount + appliedAmount)
+      )
+
+      incomingLoads.value[index] = updatedRecord
+      remainingAmount = roundAmount(remainingAmount - appliedAmount)
+    })
+
+    if (remainingAmount > 0) {
+      const advanceRecord = normalizeIncomingLoadRecord(
+        {
+          date: payload.date,
+          factory: supplierFactory,
+          vehicleType: 'Howo',
+          tons: 0,
+          supplier: supplierName,
+          pricePerTon: 0,
+          totalAmount: 0,
+          paidAmount: remainingAmount,
+          notes: payload.notes.trim() || "Qo'lda ta'minotchi avansi"
+        },
+        0,
+        remainingAmount
+      )
+
+      incomingLoads.value.unshift(advanceRecord)
+    }
+
+    addExpense({
+      date: payload.date,
+      factory: supplierFactory,
+      category: "Ta'minotchi to'lovi",
+      description: `Ta'minotchiga to'lov: ${supplierName}`,
+      amount,
+      paymentMethod: payload.paymentMethod,
+      notes: payload.notes.trim()
+    })
+
+    const afterSummary = supplierSummaries.value.find((summary) => normalizeContactName(summary.supplierName) === supplierKey) ?? null
+
+    appendAuditLog({
+      action: 'add',
+      section: "Ta'minotchilar",
+      entityType: 'supplier-payment',
+      recordId: createId('supplier-payment'),
+      summary: `${supplierName}ga qo'lda to'lov qo'shildi`,
+      before: beforeSummary,
+      after: {
+        supplierName,
+        date: payload.date,
+        paymentMethod: payload.paymentMethod,
+        amount,
+        notes: payload.notes.trim(),
+        remainingAsAdvance: remainingAmount,
+        summary: afterSummary
+      }
+    })
+  }
+
   const addExpense = (payload: Omit<OperationalExpense, 'id'>) => {
     if (!guardAdminMutation()) {
       return
@@ -2650,6 +2753,7 @@ export const useFactoryAccounting = () => {
     addBarterRecord,
     updateBarterRecord,
     removeBarterRecord,
+    applySupplierPayment,
     upsertReminder,
     removeReminder,
     markReminderSent,
