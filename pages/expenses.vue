@@ -56,18 +56,76 @@ const selectedExpense = ref<OperationalExpense | null>(null)
 const previousWorkerSuggestion = ref(0)
 
 const getMonthStart = (date: string) => `${date.slice(0, 7)}-01`
-const getWorkerSuggestion = (date: string, factory: FactoryName | '') => {
+const normalizeText = (value: string) => value.trim().toLowerCase()
+const roundAmount = (value: number) => Number(value.toFixed(2))
+
+type WorkerExpenseStatus = {
+  factory: FactoryName
+  payoutMode: 'daily' | 'monthly'
+  calculatedAmount: number
+  paidAmount: number
+  advanceAmount: number
+  remainingAmount: number
+  periodStart: string
+}
+
+const getWorkerExpenseStatus = (date: string, factory: FactoryName | '', excludeExpenseId?: string | null): WorkerExpenseStatus | null => {
   if (!date || !factory) {
-    return 0
+    return null
   }
 
-  if (factory === 'Jamshid') {
-    const dailySummary = buildSummary(date, date)
-    return dailySummary.workerPaymentByFactory.find((item) => item.factory === factory)?.paidNow ?? 0
-  }
+  const payoutMode = factory === 'Jamshid' ? 'daily' : 'monthly'
+  const periodStart = payoutMode === 'daily' ? date : getMonthStart(date)
+  const summary = buildSummary(periodStart, date)
+  const workerSummary = summary.workerPaymentByFactory.find((item) => item.factory === factory)
+  const calculatedAmount = roundAmount(
+    payoutMode === 'daily'
+      ? workerSummary?.amount ?? 0
+      : workerSummary?.accrued ?? 0
+  )
 
-  const monthlySummary = buildSummary(getMonthStart(date), date)
-  return monthlySummary.workerPaymentByFactory.find((item) => item.factory === factory)?.accrued ?? 0
+  const periodExpenses = expenses.value.filter((record) => {
+    if (excludeExpenseId && record.id === excludeExpenseId) {
+      return false
+    }
+
+    if (record.factory !== factory) {
+      return false
+    }
+
+    if (record.date < periodStart || record.date > date) {
+      return false
+    }
+
+    return true
+  })
+
+  const paidAmount = roundAmount(
+    periodExpenses
+      .filter((record) => record.category === 'Ishchi')
+      .reduce((sum, record) => sum + record.amount, 0)
+  )
+
+  const advanceAmount = payoutMode === 'monthly'
+    ? roundAmount(
+        periodExpenses
+          .filter((record) => {
+            const haystack = normalizeText(`${record.description} ${record.notes}`)
+            return haystack.includes('oybek') && haystack.includes('avans')
+          })
+          .reduce((sum, record) => sum + record.amount, 0)
+      )
+    : 0
+
+  return {
+    factory,
+    payoutMode,
+    calculatedAmount,
+    paidAmount,
+    advanceAmount,
+    remainingAmount: Math.max(0, roundAmount(calculatedAmount - paidAmount - advanceAmount)),
+    periodStart
+  }
 }
 
 const workerExpenseSuggestion = computed(() => {
@@ -75,8 +133,14 @@ const workerExpenseSuggestion = computed(() => {
     return 0
   }
 
-  return getWorkerSuggestion(expenseForm.date, expenseForm.factory as FactoryName | '')
+  return workerExpenseStatus.value?.remainingAmount ?? 0
 })
+
+const workerExpenseStatus = computed(() =>
+  expenseForm.category === 'Ishchi'
+    ? getWorkerExpenseStatus(expenseForm.date, expenseForm.factory as FactoryName | '', editingId.value)
+    : null
+)
 
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -480,11 +544,38 @@ watch(
     >
       <p class="font-semibold">Ishchi puli tavsiyasi</p>
       <p class="mt-1">
-        {{ expenseForm.factory ? `${expenseForm.factory} uchun berilishi kerak: ${formatSom(workerExpenseSuggestion)}` : 'Ishchi uchun zavodni tanlang.' }}
+        {{ expenseForm.factory ? `${expenseForm.factory} uchun qolgan to'lov: ${formatSom(workerExpenseSuggestion)}` : 'Ishchi uchun zavodni tanlang.' }}
       </p>
       <p class="mt-1 text-xs text-sky-700">
-        {{ expenseForm.factory === 'Jamshid' ? 'Jamshid har kunlik hisob bo`yicha olinadi.' : expenseForm.factory === 'Oybek' ? 'Oybek joriy oy yig`ilgan oyligi bo`yicha olinadi.' : '' }}
+        {{ expenseForm.factory === 'Jamshid' ? 'Jamshid har kunlik hisob bo`yicha shu kunning o`zida to`lanadi.' : expenseForm.factory === 'Oybek' ? 'Oybek joriy oy yig`ilgan oyligi bo`yicha hisoblanadi.' : '' }}
       </p>
+      <div v-if="workerExpenseStatus" class="mt-3 grid gap-3 sm:grid-cols-3">
+        <div class="rounded-xl bg-white/80 px-3 py-2">
+          <p class="text-[11px] uppercase tracking-wide text-slate-500">Hisoblangan</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ formatSom(workerExpenseStatus.calculatedAmount) }}</p>
+        </div>
+        <div class="rounded-xl bg-white/80 px-3 py-2">
+          <p class="text-[11px] uppercase tracking-wide text-slate-500">To`langan</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ formatSom(workerExpenseStatus.paidAmount) }}</p>
+        </div>
+        <div class="rounded-xl bg-white/80 px-3 py-2">
+          <p class="text-[11px] uppercase tracking-wide text-slate-500">Qolgan</p>
+          <p class="mt-1 font-semibold text-emerald-700">{{ formatSom(workerExpenseStatus.remainingAmount) }}</p>
+        </div>
+      </div>
+      <div
+        v-if="workerExpenseStatus?.payoutMode === 'monthly'"
+        class="mt-3 grid gap-3 sm:grid-cols-2"
+      >
+        <div class="rounded-xl bg-white/80 px-3 py-2">
+          <p class="text-[11px] uppercase tracking-wide text-slate-500">Oybek avans</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ formatSom(workerExpenseStatus.advanceAmount) }}</p>
+        </div>
+        <div class="rounded-xl bg-white/80 px-3 py-2">
+          <p class="text-[11px] uppercase tracking-wide text-slate-500">Hisob davri</p>
+          <p class="mt-1 font-semibold text-slate-900">{{ workerExpenseStatus.periodStart }} - {{ expenseForm.date }}</p>
+        </div>
+      </div>
     </div>
 
     <p v-if="formError" class="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
