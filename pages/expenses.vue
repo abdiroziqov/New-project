@@ -486,7 +486,7 @@ watch(
       </div>
 
       <div class="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        Formula mahsulot turiga qarab ishlaydi. `Qum` uchun ishchi `35`, `Mel` uchun ishchi `40`.
+        Formula mahsulot turiga qarab ishlaydi. `Qum` uchun ishchi `40`, `Mel` uchun ishchi `40`.
         `Qum/Mel sotuv narxi / kg` saqlanadi, lekin tannarxga qo'shilmaydi.
         `Bozorliq` ishlab chiqarilgan jami mahsulotga qo'shiladi. Rasipnoyda `ortib berish` va `qop` hisobga olinmaydi.
       </div>

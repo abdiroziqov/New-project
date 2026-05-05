@@ -245,6 +245,16 @@ export interface ScaleCashEntry {
   createdAt: string
 }
 
+export interface CashInRecord {
+  id: string
+  date: string
+  amount: number
+  paymentMethod: PaymentMethod
+  description: string
+  notes: string
+  createdAt: string
+}
+
 export interface ClientReminderSetting {
   id: string
   clientName: string
@@ -297,6 +307,7 @@ export interface AccountingStateSnapshot {
   scaleEntries: ScaleEntry[]
   scaleSyncMeta: ScaleSyncMeta
   scaleCashEntries: ScaleCashEntry[]
+  cashInRecords: CashInRecord[]
   sales: SaleRecord[]
   manualDebts: ManualDebtRecord[]
   payments: PaymentRecord[]

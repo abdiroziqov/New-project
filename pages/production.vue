@@ -14,9 +14,13 @@ const {
   productTypes,
   expenseCategories,
   paymentMethods,
+  expenses,
+  supplierContacts,
   latestDate,
   addDailyRecord,
   addExpense,
+  applySupplierPayment,
+  getSupplierProfile,
   updateDailyRecord,
   removeDailyRecord
 } = useFactoryAccounting()
@@ -25,6 +29,7 @@ const { formatSom, formatTons } = useFormatting()
 const { setRecentDays, setCurrentMonth } = useDateRangePresets()
 const { t } = useUiLocale()
 const createFactories: FactoryName[] = ['Oybek', 'Jamshid']
+const roundAmount = (value: number) => Number(value.toFixed(2))
 
 type DailyFactoryCreateState = {
   productType: ProductType
@@ -36,6 +41,19 @@ type DailyFactoryCreateState = {
 type SharedExpenseRow = {
   category: ExpenseCategory
   description: string
+  amount: number
+  paymentMethod: PaymentMethod
+  notes: string
+}
+
+type JamshidWorkerPaymentState = {
+  amount: number
+  paymentMethod: PaymentMethod
+  notes: string
+}
+
+type SupplierPaymentState = {
+  supplierName: string
   amount: number
   paymentMethod: PaymentMethod
   notes: string
@@ -74,6 +92,17 @@ const createForms = reactive<Record<FactoryName, DailyFactoryCreateState>>({
   Jamshid: createFactoryState()
 })
 const createSharedExpenses = ref<SharedExpenseRow[]>([])
+const createJamshidWorkerPayment = reactive<JamshidWorkerPaymentState>({
+  amount: 0,
+  paymentMethod: 'Naqd',
+  notes: ''
+})
+const createSupplierPayment = reactive<SupplierPaymentState>({
+  supplierName: '',
+  amount: 0,
+  paymentMethod: 'Naqd',
+  notes: ''
+})
 const form = reactive<Omit<DailyFactoryRecord, 'id'>>(createFormState())
 const modalOpen = ref(false)
 const editingId = ref<string | null>(null)
@@ -81,6 +110,7 @@ const formError = ref('')
 
 const deleteDialogOpen = ref(false)
 const selectedRecord = ref<DailyFactoryRecord | null>(null)
+const previousJamshidWorkerSuggestion = ref(0)
 
 const columns: TableColumn[] = [
   { key: 'date', label: 'Sana' },
@@ -148,6 +178,19 @@ const costItems = computed(() => [
   { label: 'Tosh', value: defaultCosts.value.stoneCostPerTon },
   { label: 'Qop', value: defaultCosts.value.bagCostPerTon }
 ])
+const sharedExpenseCategoryOptions = computed(() =>
+  expenseCategories
+    .filter((item) => item !== "Ta'minotchi to'lovi")
+    .map((item) => ({ label: item, value: item }))
+)
+const supplierOptions = computed(() =>
+  supplierContacts.value
+    .map((supplier) => ({
+      label: supplier.name,
+      value: supplier.name
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label))
+)
 
 const getCreateFactoryState = (factory: FactoryName) => createForms[factory]
 const getCreateFactoryBulkAllowed = (factory: FactoryName) =>
@@ -196,6 +239,18 @@ const createSharedExpenseTotal = computed(() =>
       .toFixed(2)
   )
 )
+const jamshidCalculatedWorkerPayment = computed(() => roundAmount(getCreateFactoryCostBreakdown('Jamshid').worker))
+const jamshidPaidWorkerToday = computed(() =>
+  roundAmount(
+    expenses.value
+      .filter((record) => record.date === createDate.value && record.factory === 'Jamshid' && record.category === 'Ishchi')
+      .reduce((sum, record) => sum + record.amount, 0)
+  )
+)
+const jamshidRemainingWorkerPayment = computed(() =>
+  Math.max(0, roundAmount(jamshidCalculatedWorkerPayment.value - jamshidPaidWorkerToday.value))
+)
+const selectedSupplierProfile = computed(() => getSupplierProfile(createSupplierPayment.supplierName))
 const createSummary = computed(() => ({
   totalOutputTons: createFactories.reduce((sum, factory) => sum + getCreateFactoryOutputTons(factory), 0),
   totalUsedStoneTons: createFactories.reduce((sum, factory) => sum + getCreateFactoryUsedStoneTons(factory), 0),
@@ -241,6 +296,14 @@ const resetCreateForm = () => {
     Object.assign(createForms[factory], createFactoryState())
   })
   createSharedExpenses.value = []
+  createJamshidWorkerPayment.amount = 0
+  createJamshidWorkerPayment.paymentMethod = 'Naqd'
+  createJamshidWorkerPayment.notes = ''
+  createSupplierPayment.supplierName = ''
+  createSupplierPayment.amount = 0
+  createSupplierPayment.paymentMethod = 'Naqd'
+  createSupplierPayment.notes = ''
+  previousJamshidWorkerSuggestion.value = 0
 
   editingId.value = null
   formError.value = ''
@@ -340,9 +403,16 @@ const saveRecord = () => {
       .filter((payload): payload is Omit<DailyFactoryRecord, 'id'> => Boolean(payload))
 
     const hasAnyExpense = createSharedExpenses.value.some((row) => Number(row.amount) > 0)
+    const hasJamshidWorkerPayment = Number(createJamshidWorkerPayment.amount) > 0
+    const hasSupplierPayment = Number(createSupplierPayment.amount) > 0
 
-    if (!payloads.length && !hasAnyExpense) {
-      formError.value = 'Kamida bitta zavod uchun mahsulot yoki harajat kiriting.'
+    if (!payloads.length && !hasAnyExpense && !hasJamshidWorkerPayment && !hasSupplierPayment) {
+      formError.value = 'Kamida bitta zavod uchun mahsulot, to`lov yoki harajat kiriting.'
+      return
+    }
+
+    if (hasSupplierPayment && !createSupplierPayment.supplierName.trim()) {
+      formError.value = 'Ta`minotchini tanlang.'
       return
     }
 
@@ -363,6 +433,28 @@ const saveRecord = () => {
           notes: row.notes.trim()
         })
       })
+
+    if (hasJamshidWorkerPayment) {
+      addExpense({
+        date: createDate.value,
+        factory: 'Jamshid',
+        category: 'Ishchi',
+        description: 'Jamshid ishchi puli',
+        amount: Number(createJamshidWorkerPayment.amount),
+        paymentMethod: createJamshidWorkerPayment.paymentMethod,
+        notes: createJamshidWorkerPayment.notes.trim()
+      })
+    }
+
+    if (hasSupplierPayment) {
+      applySupplierPayment({
+        date: createDate.value,
+        supplierName: createSupplierPayment.supplierName.trim(),
+        amount: Number(createSupplierPayment.amount),
+        paymentMethod: createSupplierPayment.paymentMethod,
+        notes: createSupplierPayment.notes.trim()
+      })
+    }
 
     modalOpen.value = false
     resetCreateForm()
@@ -472,6 +564,20 @@ watch(
       createForms.Jamshid.bulkOutputTons = 0
     }
   }
+)
+
+watch(
+  () => [createDate.value, createForms.Jamshid.productType, createForms.Jamshid.baggedOutputTons, createForms.Jamshid.bulkOutputTons] as const,
+  () => {
+    const suggestion = jamshidRemainingWorkerPayment.value
+
+    if (Number(createJamshidWorkerPayment.amount) <= 0 || Number(createJamshidWorkerPayment.amount) === previousJamshidWorkerSuggestion.value) {
+      createJamshidWorkerPayment.amount = suggestion
+    }
+
+    previousJamshidWorkerSuggestion.value = suggestion
+  },
+  { immediate: true }
 )
 </script>
 
@@ -684,7 +790,7 @@ watch(
             <div class="mb-3 flex items-center justify-between">
               <div>
                 <h4 class="text-base font-semibold text-slate-900">Umumiy qo'shimcha harajatlar</h4>
-                <p class="text-xs text-slate-500">Ikkala zavodga umumiy bo'lgan bozorliq, pagruzka, ishchi puli, avans va boshqa chiqimlar</p>
+                <p class="text-xs text-slate-500">Ikkala zavodga umumiy bo'lgan bozorliq, pagruzka, avans va boshqa chiqimlar</p>
               </div>
               <button type="button" class="btn-secondary !px-3 !py-1.5 text-xs" @click="addCreateSharedExpense">
                 Harajat qo'shish
@@ -706,7 +812,7 @@ watch(
                   <AppSelect
                     v-model="expense.category"
                     label="Kategoriya"
-                    :options="expenseCategories.map((item) => ({ label: item, value: item }))"
+                    :options="sharedExpenseCategoryOptions"
                   />
                   <AppInput v-model="expense.description" label="Tavsif" placeholder="Masalan, bozorliq yoki Jamshid kunligi" />
                   <AppInput v-model="expense.amount" type="number" min="0" step="0.01" label="Summa" />
@@ -729,6 +835,105 @@ watch(
             </div>
 
             <p v-else class="text-sm text-slate-500">Umumiy harajat yozuvi yo'q. Kerak bo'lsa shu yerda qo'shing.</p>
+          </section>
+
+          <section class="mt-4 grid gap-4 xl:grid-cols-2">
+            <article class="rounded-3xl border border-sky-200 bg-sky-50/70 p-4">
+              <div class="mb-3 flex items-center justify-between">
+                <div>
+                  <h4 class="text-base font-semibold text-slate-900">Jamshid ishchi puli to`lash</h4>
+                  <p class="text-xs text-slate-500">Jamshid kunlik ishchi puli shu yerdan alohida to`lanadi</p>
+                </div>
+                <span class="data-chip">Jamshid / kunlik</span>
+              </div>
+
+              <div class="mb-3 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Hisoblangan</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(jamshidCalculatedWorkerPayment) }}</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">To`langan</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(jamshidPaidWorkerToday) }}</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Qolgan</p>
+                  <p class="mt-1 text-base font-semibold text-emerald-700">{{ formatSom(jamshidRemainingWorkerPayment) }}</p>
+                </div>
+              </div>
+
+              <div class="grid gap-3 md:grid-cols-2">
+                <AppInput
+                  v-model="createJamshidWorkerPayment.amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  label="To`lanadigan summa"
+                />
+                <AppSelect
+                  v-model="createJamshidWorkerPayment.paymentMethod"
+                  label="To`lov turi"
+                  :options="paymentMethods.map((item) => ({ label: item, value: item }))"
+                />
+              </div>
+
+              <div class="mt-3">
+                <AppInput v-model="createJamshidWorkerPayment.notes" label="Izoh" placeholder="Masalan, Jamshid kunlik ishchi puli" />
+              </div>
+            </article>
+
+            <article class="rounded-3xl border border-amber-200 bg-amber-50/70 p-4">
+              <div class="mb-3 flex items-center justify-between">
+                <div>
+                  <h4 class="text-base font-semibold text-slate-900">Ta`minotchiga to`lov</h4>
+                  <p class="text-xs text-slate-500">Tosh uchun supplierga berilgan pulni shu yerdan yozasiz</p>
+                </div>
+                <span class="data-chip">Balans kamayadi</span>
+              </div>
+
+              <div class="grid gap-3 md:grid-cols-2">
+                <AppSelect
+                  v-model="createSupplierPayment.supplierName"
+                  label="Ta`minotchi"
+                  :options="supplierOptions"
+                  placeholder="Ta`minotchini tanlang"
+                  searchable
+                />
+                <AppInput
+                  v-model="createSupplierPayment.amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  label="To`lov summasi"
+                />
+                <AppSelect
+                  v-model="createSupplierPayment.paymentMethod"
+                  label="To`lov turi"
+                  :options="paymentMethods.map((item) => ({ label: item, value: item }))"
+                />
+                <AppInput v-model="createSupplierPayment.notes" label="Izoh" placeholder="Masalan, tosh uchun o`tkazildi" />
+              </div>
+
+              <div
+                v-if="selectedSupplierProfile.summary"
+                class="mt-3 grid gap-3 sm:grid-cols-3"
+              >
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">Jami summa</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(selectedSupplierProfile.summary.totalAmount) }}</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">To`langan</p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(selectedSupplierProfile.summary.totalPaid) }}</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3">
+                  <p class="text-xs text-slate-500">
+                    {{ selectedSupplierProfile.summary.balanceType === 'bizdan_qarz' ? 'Biz qarzmiz' : selectedSupplierProfile.summary.balanceType === 'bizga_qarz' ? 'U qarz' : 'Balans' }}
+                  </p>
+                  <p class="mt-1 text-base font-semibold text-slate-900">{{ formatSom(selectedSupplierProfile.summary.balanceAmount) }}</p>
+                </div>
+              </div>
+            </article>
           </section>
         </template>
       </section>

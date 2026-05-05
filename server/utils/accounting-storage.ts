@@ -8,6 +8,7 @@ import type {
   ArchiveFactoryScope,
   BarterRecord,
   BalanceType,
+  CashInRecord,
   ClientReminderSetting,
   ContactRecord,
   CostProfile,
@@ -75,7 +76,7 @@ const scaleCashTypes: ScaleCashType[] = ['kirim', 'chiqim']
 const defaultCostProfile: CostProfile = {
   sandPricePerTon: 240,
   chalkPricePerTon: 250,
-  sandWorkerCostPerTon: 35,
+  sandWorkerCostPerTon: 40,
   chalkWorkerCostPerTon: 40,
   marketCostPerTon: 0,
   loadingCostPerTon: 10,
@@ -162,11 +163,12 @@ const getPaymentStatus = (totalAmount: number, paidAmount: number): PaymentStatu
 
 const normalizeCostProfile = (value: unknown): CostProfile => {
   const profile = typeof value === 'object' && value ? (value as Partial<CostProfile>) : {}
+  const sandWorkerCostPerTon = asNumber(profile.sandWorkerCostPerTon, defaultCostProfile.sandWorkerCostPerTon)
 
   return {
     sandPricePerTon: asNumber(profile.sandPricePerTon, defaultCostProfile.sandPricePerTon),
     chalkPricePerTon: asNumber(profile.chalkPricePerTon, defaultCostProfile.chalkPricePerTon),
-    sandWorkerCostPerTon: asNumber(profile.sandWorkerCostPerTon, defaultCostProfile.sandWorkerCostPerTon),
+    sandWorkerCostPerTon: sandWorkerCostPerTon === 35 ? 40 : sandWorkerCostPerTon,
     chalkWorkerCostPerTon: asNumber(profile.chalkWorkerCostPerTon, defaultCostProfile.chalkWorkerCostPerTon),
     marketCostPerTon: asNumber(profile.marketCostPerTon, defaultCostProfile.marketCostPerTon),
     loadingCostPerTon: asNumber(profile.loadingCostPerTon, defaultCostProfile.loadingCostPerTon),
@@ -445,6 +447,20 @@ const normalizeScaleCashEntry = (record: unknown): ScaleCashEntry => {
   }
 }
 
+const normalizeCashInRecord = (record: unknown): CashInRecord => {
+  const source = typeof record === 'object' && record ? (record as Partial<CashInRecord>) : {}
+
+  return {
+    id: asString(source.id, createId('cash-in')),
+    date: asString(source.date, todayIso()),
+    amount: asNumber(source.amount),
+    paymentMethod: isPaymentMethod(source.paymentMethod) ? source.paymentMethod : 'Naqd',
+    description: asString(source.description),
+    notes: asString(source.notes),
+    createdAt: asString(source.createdAt, new Date().toISOString())
+  }
+}
+
 const normalizeAuditLogRecord = (record: unknown): AuditLogRecord => {
   const source = typeof record === 'object' && record ? (record as Partial<AuditLogRecord>) : {}
   const actorRole = source.actorRole === 'manager' || source.actorRole === 'operator' ? source.actorRole : 'admin'
@@ -480,6 +496,7 @@ const buildSeedState = (): AccountingStateSnapshot => ({
   scaleEntries: (scaleEntriesSource as unknown[]).map((record) => normalizeScaleEntry(record)),
   scaleSyncMeta: normalizeScaleSyncMeta({}),
   scaleCashEntries: (scaleCashEntriesSource as unknown[]).map((record) => normalizeScaleCashEntry(record)),
+  cashInRecords: [],
   sales: (salesSource as unknown[]).map((record) => normalizeSaleRecord(record)),
   manualDebts: (manualDebtsSource as unknown[]).map((record) => normalizeManualDebtRecord(record)),
   payments: (paymentsSource as unknown[]).map((record) => normalizePaymentRecord(record)),
@@ -508,6 +525,9 @@ export const normalizeAccountingState = (snapshot: unknown): AccountingStateSnap
     scaleSyncMeta: normalizeScaleSyncMeta(source.scaleSyncMeta),
     scaleCashEntries: Array.isArray(source.scaleCashEntries)
       ? source.scaleCashEntries.map((record) => normalizeScaleCashEntry(record))
+      : [],
+    cashInRecords: Array.isArray(source.cashInRecords)
+      ? source.cashInRecords.map((record) => normalizeCashInRecord(record))
       : [],
     sales: Array.isArray(source.sales) ? source.sales.map((record) => normalizeSaleRecord(record)) : [],
     manualDebts: Array.isArray(source.manualDebts) ? source.manualDebts.map((record) => normalizeManualDebtRecord(record)) : [],

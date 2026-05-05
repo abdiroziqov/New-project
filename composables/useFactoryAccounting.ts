@@ -14,6 +14,7 @@ import type {
   AuditAction,
   AuditLogRecord,
   BarterRecord,
+  CashInRecord,
   ClientReminderSetting,
   ClientDirectoryRecord,
   ClientSummary,
@@ -114,7 +115,7 @@ export const scaleCashTypes: ScaleCashType[] = ['kirim', 'chiqim']
 export const defaultCostProfile: CostProfile = {
   sandPricePerTon: 240,
   chalkPricePerTon: 250,
-  sandWorkerCostPerTon: 35,
+  sandWorkerCostPerTon: 40,
   chalkWorkerCostPerTon: 40,
   marketCostPerTon: 0,
   loadingCostPerTon: 10,
@@ -486,6 +487,16 @@ const normalizeScaleCashEntryRecord = (record: Partial<ScaleCashEntry>): ScaleCa
   createdAt: record.createdAt ?? new Date().toISOString()
 })
 
+const normalizeCashInRecord = (record: Partial<CashInRecord>): CashInRecord => ({
+  id: record.id ?? createId('cash-in'),
+  date: record.date ?? new Date().toISOString().slice(0, 10),
+  amount: Number(Math.max(record.amount ?? 0, 0).toFixed(2)),
+  paymentMethod: record.paymentMethod ?? 'Naqd',
+  description: record.description?.trim() ?? '',
+  notes: record.notes?.trim() ?? '',
+  createdAt: record.createdAt ?? new Date().toISOString()
+})
+
 const normalizeManualDebtRecord = (record: Partial<ManualDebtRecord>): ManualDebtRecord => {
   const amount = Number(record.amount ?? 0)
   const paidAmount = Number(record.paidAmount ?? 0)
@@ -573,6 +584,10 @@ export const useFactoryAccounting = () => {
     'accounting:scale-cash-entries',
     () => clone(seedScaleCashEntries).map((record) => normalizeScaleCashEntryRecord(record))
   )
+  const cashInRecords = useState<CashInRecord[]>(
+    'accounting:cash-in-records',
+    () => []
+  )
   const sales = useState<SaleRecord[]>(
     'accounting:sales',
     () => seedSales.map((record) => normalizeSaleRecord(record))
@@ -606,11 +621,19 @@ export const useFactoryAccounting = () => {
     () => []
   )
 
+  if (defaultCosts.value.sandWorkerCostPerTon === 35) {
+    defaultCosts.value = {
+      ...defaultCosts.value,
+      sandWorkerCostPerTon: 40
+    }
+  }
+
   const latestDate = computed(() => {
     const dates = [
       ...dailyRecords.value.map((record) => record.date),
       ...incomingLoads.value.map((record) => record.date),
       ...manualDebts.value.map((record) => record.date),
+      ...cashInRecords.value.map((record) => record.date),
       ...payments.value.map((record) => record.date),
       ...barterRecords.value.map((record) => record.date),
       ...sales.value.map((record) => record.date),
@@ -638,6 +661,7 @@ export const useFactoryAccounting = () => {
         ...dailyRecords.value.map((record) => record.date),
         ...incomingLoads.value.map((record) => record.date),
         ...manualDebts.value.map((record) => record.date),
+        ...cashInRecords.value.map((record) => record.date),
         ...payments.value.map((record) => record.date),
         ...barterRecords.value.map((record) => record.date),
         ...sales.value.map((record) => record.date),
@@ -650,6 +674,7 @@ export const useFactoryAccounting = () => {
         ...sales.value.map((record) => record.date),
         ...expenses.value.map((record) => record.date),
         ...manualDebts.value.map((record) => record.date),
+        ...cashInRecords.value.map((record) => record.date),
         ...payments.value.map((record) => record.date),
         ...barterRecords.value.map((record) => record.date)
       ]),
@@ -659,6 +684,7 @@ export const useFactoryAccounting = () => {
         ...sales.value.map((record) => record.date),
         ...expenses.value.map((record) => record.date),
         ...manualDebts.value.map((record) => record.date),
+        ...cashInRecords.value.map((record) => record.date),
         ...payments.value.map((record) => record.date),
         ...barterRecords.value.map((record) => record.date)
       ]),
@@ -691,7 +717,12 @@ export const useFactoryAccounting = () => {
           .filter(Boolean)
       ),
       manualEntry: buildGuide([
+        ...cashInRecords.value.map((record) => record.date),
         ...payments.value.map((record) => record.date),
+        ...expenses.value.map((record) => record.date)
+      ]),
+      moneyDb: buildGuide([
+        ...cashInRecords.value.map((record) => record.date),
         ...expenses.value.map((record) => record.date)
       ]),
       quickEntry: buildGuide([
@@ -699,6 +730,7 @@ export const useFactoryAccounting = () => {
         ...incomingLoads.value.map((record) => record.date),
         ...sales.value.map((record) => record.date),
         ...expenses.value.map((record) => record.date),
+        ...cashInRecords.value.map((record) => record.date),
         ...payments.value.map((record) => record.date)
       ]),
       barter: buildGuide(barterRecords.value.map((record) => record.date)),
@@ -1910,6 +1942,71 @@ export const useFactoryAccounting = () => {
         entityType: 'manual-debt',
         recordId: existing.id,
         summary: `${existing.clientName} uchun eski qarz o'chirildi`,
+        before: existing
+      })
+    }
+  }
+
+  const addCashInRecord = (payload: Omit<CashInRecord, 'id' | 'createdAt'>) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const record = normalizeCashInRecord({
+      id: createId('cash-in'),
+      createdAt: new Date().toISOString(),
+      ...payload
+    })
+
+    cashInRecords.value.unshift(record)
+    appendAuditLog({
+      action: 'add',
+      section: 'Pul DB',
+      entityType: 'cash-in',
+      recordId: record.id,
+      summary: `${record.description || 'Pul kirimi'} qo'shildi`,
+      after: record
+    })
+  }
+
+  const updateCashInRecord = (payload: CashInRecord) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const index = cashInRecords.value.findIndex((record) => record.id === payload.id)
+
+    if (index !== -1) {
+      const previous = cashInRecords.value[index]
+      const record = normalizeCashInRecord(payload)
+      cashInRecords.value[index] = record
+      appendAuditLog({
+        action: 'update',
+        section: 'Pul DB',
+        entityType: 'cash-in',
+        recordId: record.id,
+        summary: `${record.description || 'Pul kirimi'} tahrirlandi`,
+        before: previous,
+        after: record
+      })
+    }
+  }
+
+  const removeCashInRecord = (id: string) => {
+    if (!guardAdminMutation()) {
+      return
+    }
+
+    const existing = cashInRecords.value.find((record) => record.id === id)
+    cashInRecords.value = cashInRecords.value.filter((record) => record.id !== id)
+
+    if (existing) {
+      appendAuditLog({
+        action: 'delete',
+        section: 'Pul DB',
+        entityType: 'cash-in',
+        recordId: existing.id,
+        summary: `${existing.description || 'Pul kirimi'} o'chirildi`,
         before: existing
       })
     }
