@@ -51,13 +51,27 @@ type IncomingLoadQuickForm = {
   notes: string
 }
 
-const dailyForm = reactive({
+type DailyQuickForm = {
+  date: string
+  productType: ProductType
+  baggedOutputTons: number
+  bulkOutputTons: number
+  notes: string
+}
+
+const quickFactories: FactoryName[] = ['Oybek', 'Jamshid']
+
+const createDailyQuickForm = (): DailyQuickForm => ({
   date: latestDate.value,
-  factory: 'Oybek' as FactoryName,
-  productType: 'Qum' as ProductType,
+  productType: 'Qum',
   baggedOutputTons: 0,
   bulkOutputTons: 0,
   notes: ''
+})
+
+const dailyForms = reactive<Record<FactoryName, DailyQuickForm>>({
+  Oybek: createDailyQuickForm(),
+  Jamshid: createDailyQuickForm()
 })
 
 const loadForm = reactive<IncomingLoadQuickForm>({
@@ -115,47 +129,54 @@ const showMessage = (message: string) => {
   }, 2500)
 }
 
-const getNormalizedDailyOutputTons = () =>
-  getOutputTons({
-    baggedOutputTons: Number(dailyForm.baggedOutputTons),
-    bulkOutputTons: normalizeBulkOutputTons(dailyForm.productType, Number(dailyForm.bulkOutputTons))
-  })
+const getNormalizedDailyOutputTons = (factory: FactoryName) => {
+  const form = dailyForms[factory]
 
-const getNormalizedDailyUsedStoneTons = () =>
-  getUsedStoneTons({
-    baggedOutputTons: Number(dailyForm.baggedOutputTons),
-    bulkOutputTons: normalizeBulkOutputTons(dailyForm.productType, Number(dailyForm.bulkOutputTons))
+  return getOutputTons({
+    baggedOutputTons: Number(form.baggedOutputTons),
+    bulkOutputTons: normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons))
   })
+}
 
-const saveDaily = () => {
-  if (getNormalizedDailyOutputTons() <= 0) {
+const getNormalizedDailyUsedStoneTons = (factory: FactoryName) => {
+  const form = dailyForms[factory]
+
+  return getUsedStoneTons({
+    baggedOutputTons: Number(form.baggedOutputTons),
+    bulkOutputTons: normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons))
+  })
+}
+
+const saveDaily = (factory: FactoryName) => {
+  const form = dailyForms[factory]
+
+  if (getNormalizedDailyOutputTons(factory) <= 0) {
     showMessage('Kunlik hisob uchun chiqqan mahsulot tonnasini kiriting.')
     return
   }
 
   addDailyRecord({
     ...defaultCosts.value,
-    date: dailyForm.date,
-    factory: dailyForm.factory,
-    productType: dailyForm.productType,
-    incomingStoneTons: getNormalizedDailyUsedStoneTons(),
-    usedStoneTons: getNormalizedDailyUsedStoneTons(),
-    baggedOutputTons: Number(dailyForm.baggedOutputTons),
-    bulkOutputTons: normalizeBulkOutputTons(dailyForm.productType, Number(dailyForm.bulkOutputTons)),
-    newBagCount: getBagCount(Number(dailyForm.baggedOutputTons)),
+    date: form.date,
+    factory,
+    productType: form.productType,
+    incomingStoneTons: getNormalizedDailyUsedStoneTons(factory),
+    usedStoneTons: getNormalizedDailyUsedStoneTons(factory),
+    baggedOutputTons: Number(form.baggedOutputTons),
+    bulkOutputTons: normalizeBulkOutputTons(form.productType, Number(form.bulkOutputTons)),
+    newBagCount: getBagCount(Number(form.baggedOutputTons)),
     oldBagCount: 0,
-    notes: dailyForm.notes.trim()
+    notes: form.notes.trim()
   })
 
-  Object.assign(dailyForm, {
+  Object.assign(dailyForms[factory], {
     date: latestDate.value,
-    factory: 'Oybek',
     productType: 'Qum',
     baggedOutputTons: 0,
     bulkOutputTons: 0,
     notes: ''
   })
-  showMessage('Kunlik hisob qo`shildi.')
+  showMessage(`${factory} kunlik hisobi qo'shildi.`)
 }
 
 const saveLoad = () => {
@@ -296,17 +317,20 @@ const activeSaleClientSummary = computed(() => activeSaleClientProfile.value.sum
 const activeSaleClientContact = computed(() => activeSaleClientProfile.value.contact)
 const activeSaleClientSales = computed(() => activeSaleClientProfile.value.recentSales)
 const activeSaleClientLastSale = computed(() => activeSaleClientProfile.value.lastSale)
-const dailyBaggedCostPerTon = computed(() => getCostPerTon(defaultCosts.value, dailyForm.productType))
-const dailyBulkCostPerTon = computed(() => getBulkCostPerTon(defaultCosts.value, dailyForm.productType))
-const dailyBulkAllowed = computed(() => isBulkAllowedForProduct(dailyForm.productType))
+const getDailyBaggedCostPerTon = (factory: FactoryName) => getCostPerTon(defaultCosts.value, dailyForms[factory].productType)
+const getDailyBulkCostPerTon = (factory: FactoryName) => getBulkCostPerTon(defaultCosts.value, dailyForms[factory].productType)
+const isDailyBulkAllowed = (factory: FactoryName) => isBulkAllowedForProduct(dailyForms[factory].productType)
 const saleBulkAllowed = computed(() => isBulkAllowedForProduct(saleForm.productName))
-const dailyUsedStoneTons = computed(() => getNormalizedDailyUsedStoneTons())
-const dailyBagCount = computed(() => getBagCount(Number(dailyForm.baggedOutputTons)))
-const dailyBaggedCost = computed(() => getSaleTotal(Number(dailyForm.baggedOutputTons), dailyBaggedCostPerTon.value))
-const dailyBulkCost = computed(() =>
-  getSaleTotal(normalizeBulkOutputTons(dailyForm.productType, Number(dailyForm.bulkOutputTons)), dailyBulkCostPerTon.value)
-)
-const dailyPreviewCost = computed(() => Number((dailyBaggedCost.value + dailyBulkCost.value).toFixed(2)))
+const getDailyBagCount = (factory: FactoryName) => getBagCount(Number(dailyForms[factory].baggedOutputTons))
+const getDailyBaggedCost = (factory: FactoryName) =>
+  getSaleTotal(Number(dailyForms[factory].baggedOutputTons), getDailyBaggedCostPerTon(factory))
+const getDailyBulkCost = (factory: FactoryName) =>
+  getSaleTotal(
+    normalizeBulkOutputTons(dailyForms[factory].productType, Number(dailyForms[factory].bulkOutputTons)),
+    getDailyBulkCostPerTon(factory)
+  )
+const getDailyPreviewCost = (factory: FactoryName) =>
+  Number((getDailyBaggedCost(factory) + getDailyBulkCost(factory)).toFixed(2))
 const salePreviewReceivable = computed(() => getRemainingAmount(salePreviewTotal.value, Number(saleForm.paidAmount || 0)))
 const salePreviewAdvance = computed(() => getAdvanceAmount(salePreviewTotal.value, Number(saleForm.paidAmount || 0)))
 const salePreviewBalanceType = computed(() => getBalanceType(salePreviewTotal.value, Number(saleForm.paidAmount || 0)))
@@ -358,14 +382,16 @@ const applyQuickSaleDefaults = () => {
   }
 }
 
-watch(
-  () => dailyForm.productType,
-  (productType) => {
-    if (!isBulkAllowedForProduct(productType)) {
-      dailyForm.bulkOutputTons = 0
+quickFactories.forEach((factory) => {
+  watch(
+    () => dailyForms[factory].productType,
+    (productType) => {
+      if (!isBulkAllowedForProduct(productType)) {
+        dailyForms[factory].bulkOutputTons = 0
+      }
     }
-  }
-)
+  )
+})
 
 watch(
   () => saleForm.productName,
@@ -396,64 +422,81 @@ watch(
         <span class="data-chip">Default tannarx ishlaydi</span>
       </header>
 
-      <div class="grid gap-4 md:grid-cols-2">
-        <AppInput v-model="dailyForm.date" type="date" label="Sana" />
-        <AppSelect v-model="dailyForm.factory" label="Zavod" :options="factoryOptions" />
-        <AppSelect
-          v-model="dailyForm.productType"
-          label="Mahsulot turi"
-          :options="productTypes.map((item) => ({ label: item, value: item }))"
-        />
-        <AppInput v-model="dailyForm.baggedOutputTons" type="number" min="0" step="0.01" label="Qoplik (t)" />
-        <AppInput
-          v-model="dailyForm.bulkOutputTons"
-          type="number"
-          min="0"
-          step="0.01"
-          label="Rasipnoy (t)"
-          :disabled="!dailyBulkAllowed"
-          :placeholder="dailyBulkAllowed ? '' : 'Mel faqat qoplik bo`ladi'"
-        />
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Avtomatik tosh</p>
-          <p class="mt-1 text-base font-semibold text-slate-900">{{ formatTons(dailyUsedStoneTons) }}</p>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3">
-          <p class="text-xs text-slate-500">Avtomatik qop</p>
-          <p class="mt-1 text-base font-semibold text-slate-900">{{ dailyBagCount }} dona</p>
-        </div>
-        <div class="md:col-span-2">
-          <AppInput v-model="dailyForm.notes" label="Izoh" placeholder="Kunlik izoh" />
-        </div>
-      </div>
+      <div class="grid gap-4">
+        <div
+          v-for="factory in quickFactories"
+          :key="factory"
+          class="rounded-2xl border border-slate-200 bg-white p-4"
+        >
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 class="text-base font-semibold text-slate-900">{{ factory }} zavodi</h4>
+              <p class="text-xs text-slate-500">Qum yoki mel ishlab chiqarilganini shu yerga kiriting.</p>
+            </div>
+            <span class="data-chip">{{ factory }}</span>
+          </div>
 
-      <div class="mt-4 grid gap-3 md:grid-cols-5">
-        <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-          <span class="text-slate-500">{{ dailyForm.productType }} qoplik 1 kg</span>
-          <strong class="mt-1 block text-slate-900">{{ formatSom(dailyBaggedCostPerTon) }}</strong>
-        </div>
-        <div :class="dailyBulkAllowed ? 'rounded-2xl bg-sky-50 px-4 py-3 text-sm' : 'rounded-2xl bg-slate-100 px-4 py-3 text-sm'">
-          <span :class="dailyBulkAllowed ? 'text-sky-700' : 'text-slate-500'">{{ dailyForm.productType }} rasipnoy 1 kg</span>
-          <strong :class="dailyBulkAllowed ? 'mt-1 block text-sky-700' : 'mt-1 block text-slate-500'">
-            {{ dailyBulkAllowed ? formatSom(dailyBulkCostPerTon) : 'Yo`q' }}
-          </strong>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-          <span class="text-slate-500">Tosh sarfi</span>
-          <strong class="mt-1 block text-slate-900">{{ formatTons(dailyUsedStoneTons) }}</strong>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-          <span class="text-slate-500">Qop soni</span>
-          <strong class="mt-1 block text-slate-900">{{ dailyBagCount }} dona</strong>
-        </div>
-        <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-          <span class="text-slate-500">Jami preview tannarx</span>
-          <strong class="mt-1 block text-slate-900">{{ formatSom(dailyPreviewCost) }}</strong>
-        </div>
-      </div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <AppInput v-model="dailyForms[factory].date" type="date" label="Sana" />
+            <AppSelect
+              v-model="dailyForms[factory].productType"
+              label="Mahsulot turi"
+              :options="productTypes.map((item) => ({ label: item, value: item }))"
+            />
+            <AppInput v-model="dailyForms[factory].baggedOutputTons" type="number" min="0" step="0.01" label="Qoplik (t)" />
+            <AppInput
+              v-model="dailyForms[factory].bulkOutputTons"
+              type="number"
+              min="0"
+              step="0.01"
+              label="Rasipnoy (t)"
+              :disabled="!isDailyBulkAllowed(factory)"
+              :placeholder="isDailyBulkAllowed(factory) ? '' : 'Mel faqat qoplik bo`ladi'"
+            />
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500">Avtomatik tosh</p>
+              <p class="mt-1 text-base font-semibold text-slate-900">{{ formatTons(getNormalizedDailyUsedStoneTons(factory)) }}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-xs text-slate-500">Avtomatik qop</p>
+              <p class="mt-1 text-base font-semibold text-slate-900">{{ getDailyBagCount(factory) }} dona</p>
+            </div>
+            <div class="md:col-span-2">
+              <AppInput v-model="dailyForms[factory].notes" label="Izoh" placeholder="Kunlik izoh" />
+            </div>
+          </div>
 
-      <div class="mt-4 flex justify-end">
-        <button type="button" class="btn-primary" @click="saveDaily">{{ t("Kunlik yozuvni qo'shish") }}</button>
+          <div class="mt-4 grid gap-3 md:grid-cols-5">
+            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+              <span class="text-slate-500">{{ dailyForms[factory].productType }} qoplik 1 kg</span>
+              <strong class="mt-1 block text-slate-900">{{ formatSom(getDailyBaggedCostPerTon(factory)) }}</strong>
+            </div>
+            <div :class="isDailyBulkAllowed(factory) ? 'rounded-2xl bg-sky-50 px-4 py-3 text-sm' : 'rounded-2xl bg-slate-100 px-4 py-3 text-sm'">
+              <span :class="isDailyBulkAllowed(factory) ? 'text-sky-700' : 'text-slate-500'">{{ dailyForms[factory].productType }} rasipnoy 1 kg</span>
+              <strong :class="isDailyBulkAllowed(factory) ? 'mt-1 block text-sky-700' : 'mt-1 block text-slate-500'">
+                {{ isDailyBulkAllowed(factory) ? formatSom(getDailyBulkCostPerTon(factory)) : 'Yo`q' }}
+              </strong>
+            </div>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+              <span class="text-slate-500">Tosh sarfi</span>
+              <strong class="mt-1 block text-slate-900">{{ formatTons(getNormalizedDailyUsedStoneTons(factory)) }}</strong>
+            </div>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+              <span class="text-slate-500">Qop soni</span>
+              <strong class="mt-1 block text-slate-900">{{ getDailyBagCount(factory) }} dona</strong>
+            </div>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+              <span class="text-slate-500">Jami preview tannarx</span>
+              <strong class="mt-1 block text-slate-900">{{ formatSom(getDailyPreviewCost(factory)) }}</strong>
+            </div>
+          </div>
+
+          <div class="mt-4 flex justify-end">
+            <button type="button" class="btn-primary" @click="saveDaily(factory)">
+              {{ t(`${factory} yozuvini qo'shish`) }}
+            </button>
+          </div>
+        </div>
       </div>
     </article>
 

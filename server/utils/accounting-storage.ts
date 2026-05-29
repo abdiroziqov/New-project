@@ -64,6 +64,7 @@ const expenseCategories: ExpenseCategory[] = [
   'Sementovoz kredit',
   'Panel kredit',
   'Kobalt kredit',
+  'Soliq',
   'Boshqa'
 ]
 const paymentMethods: PaymentMethod[] = ['Naqd', 'Click', 'Prichesleniya']
@@ -164,12 +165,13 @@ const getPaymentStatus = (totalAmount: number, paidAmount: number): PaymentStatu
 const normalizeCostProfile = (value: unknown): CostProfile => {
   const profile = typeof value === 'object' && value ? (value as Partial<CostProfile>) : {}
   const sandWorkerCostPerTon = asNumber(profile.sandWorkerCostPerTon, defaultCostProfile.sandWorkerCostPerTon)
+  const chalkWorkerCostPerTon = asNumber(profile.chalkWorkerCostPerTon, defaultCostProfile.chalkWorkerCostPerTon)
 
   return {
     sandPricePerTon: asNumber(profile.sandPricePerTon, defaultCostProfile.sandPricePerTon),
     chalkPricePerTon: asNumber(profile.chalkPricePerTon, defaultCostProfile.chalkPricePerTon),
     sandWorkerCostPerTon: sandWorkerCostPerTon === 35 ? 40 : sandWorkerCostPerTon,
-    chalkWorkerCostPerTon: asNumber(profile.chalkWorkerCostPerTon, defaultCostProfile.chalkWorkerCostPerTon),
+    chalkWorkerCostPerTon: chalkWorkerCostPerTon === 35 ? 40 : chalkWorkerCostPerTon,
     marketCostPerTon: asNumber(profile.marketCostPerTon, defaultCostProfile.marketCostPerTon),
     loadingCostPerTon: asNumber(profile.loadingCostPerTon, defaultCostProfile.loadingCostPerTon),
     foodCostPerTon: asNumber(profile.foodCostPerTon, defaultCostProfile.foodCostPerTon),

@@ -5,6 +5,7 @@ type IconName =
   | 'audit'
   | 'scale'
   | 'barter'
+  | 'money-db'
   | 'quick-entry'
   | 'manual-entry'
   | 'production'
@@ -106,6 +107,24 @@ defineProps<Props>()
     <path d="m14 4 4 3-4 3" />
     <path d="M17 17H6" />
     <path d="m10 14-4 3 4 3" />
+  </svg>
+
+  <svg
+    v-else-if="name === 'money-db'"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M4 7h16" />
+    <path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+    <path d="M8 12h8" />
+    <path d="M8 16h5" />
+    <path d="M15.5 11.5 18 9l2.5 2.5" />
+    <path d="M18 9v7" />
   </svg>
 
   <svg

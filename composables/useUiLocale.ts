@@ -4,6 +4,7 @@ const exactTranslations: Record<string, string> = {
   Dashboard: 'Дашборд',
   Tarozi: 'Тарози',
   'Barter DB': 'Бартер ДБ',
+  'Pul DB': 'Пул ДБ',
   'Tez Kiritish': 'Тез Киритиш',
   'Kunlik Hisob': 'Кунлик Ҳисоб',
   'Tosh Kirimi': 'Тош Кирими',

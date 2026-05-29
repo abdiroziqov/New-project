@@ -621,10 +621,11 @@ export const useFactoryAccounting = () => {
     () => []
   )
 
-  if (defaultCosts.value.sandWorkerCostPerTon === 35) {
+  if (defaultCosts.value.sandWorkerCostPerTon === 35 || defaultCosts.value.chalkWorkerCostPerTon === 35) {
     defaultCosts.value = {
       ...defaultCosts.value,
-      sandWorkerCostPerTon: 40
+      sandWorkerCostPerTon: defaultCosts.value.sandWorkerCostPerTon === 35 ? 40 : defaultCosts.value.sandWorkerCostPerTon,
+      chalkWorkerCostPerTon: defaultCosts.value.chalkWorkerCostPerTon === 35 ? 40 : defaultCosts.value.chalkWorkerCostPerTon
     }
   }
 
@@ -2327,6 +2328,7 @@ export const useFactoryAccounting = () => {
       sales: sales.value.length,
       payments: payments.value.length,
       manualDebts: manualDebts.value.length,
+      cashInRecords: cashInRecords.value.length,
       barterRecords: barterRecords.value.length,
       expenses: expenses.value.length,
       scaleEntries: scaleEntries.value.length,
@@ -2358,6 +2360,7 @@ export const useFactoryAccounting = () => {
     scaleCashEntries.value = []
     sales.value = []
     payments.value = []
+    cashInRecords.value = []
     barterRecords.value = []
     expenses.value = []
     monthlyArchiveRecords.value = []
@@ -2398,6 +2401,9 @@ export const useFactoryAccounting = () => {
     const paymentRecords = payments.value.filter(
       (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
     )
+    const cashInRecordsInRange = factory
+      ? []
+      : cashInRecords.value.filter((record) => dateInRange(record.date, startDate, endDate))
     const expenseRecords = expenses.value.filter(
       (record) => dateInRange(record.date, startDate, endDate) && (!factory || record.factory === factory)
     )
@@ -2575,7 +2581,10 @@ export const useFactoryAccounting = () => {
       const incomingFromFallbacks = paymentMethodFallbacks
         .filter((record) => record.paymentMethod === method)
         .reduce((sum, record) => sum + record.amount, 0)
-      const incoming = roundAmount(incomingFromPayments + incomingFromFallbacks)
+      const incomingFromCashIn = cashInRecordsInRange
+        .filter((record) => record.paymentMethod === method)
+        .reduce((sum, record) => sum + record.amount, 0)
+      const incoming = roundAmount(incomingFromPayments + incomingFromFallbacks + incomingFromCashIn)
       const outgoing = roundAmount(
         expenseRecords
           .filter((record) => record.paymentMethod === method)
@@ -2714,6 +2723,7 @@ export const useFactoryAccounting = () => {
       loads,
       salesRecords,
       expenseRecords,
+      cashInRecords: cashInRecordsInRange,
       totalIncomingTons,
       totalUsedStoneTons,
       totalOutputTons,
@@ -2789,6 +2799,7 @@ export const useFactoryAccounting = () => {
     scaleEntries,
     scaleSyncMeta,
     scaleCashEntries,
+    cashInRecords,
     payments,
     sales,
     manualDebts,
@@ -2838,6 +2849,9 @@ export const useFactoryAccounting = () => {
     addScaleCashEntry,
     updateScaleCashEntry,
     removeScaleCashEntry,
+    addCashInRecord,
+    updateCashInRecord,
+    removeCashInRecord,
     addSale,
     updateSale,
     removeSale,

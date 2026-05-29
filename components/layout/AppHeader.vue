@@ -40,6 +40,7 @@ const pageGuideKey = computed(() => {
   if (path === '/manual-entry') return 'manualEntry'
   if (path === '/quick-entry') return 'quickEntry'
   if (path === '/barter') return 'barter'
+  if (path === '/money-db') return 'moneyDb'
   if (path === '/scale') return 'scale'
 
   return 'overall'

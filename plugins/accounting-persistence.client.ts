@@ -10,6 +10,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       scaleEntries,
       scaleSyncMeta,
       scaleCashEntries,
+      cashInRecords,
       payments,
       barterRecords,
       sales,
@@ -34,6 +35,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       scaleEntries: scaleEntries.value,
       scaleSyncMeta: scaleSyncMeta.value,
       scaleCashEntries: scaleCashEntries.value,
+      cashInRecords: cashInRecords.value,
       sales: sales.value,
       manualDebts: manualDebts.value,
       payments: payments.value,
@@ -53,6 +55,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       scaleEntries.value = snapshot.scaleEntries
       scaleSyncMeta.value = snapshot.scaleSyncMeta
       scaleCashEntries.value = snapshot.scaleCashEntries
+      cashInRecords.value = snapshot.cashInRecords
       sales.value = snapshot.sales
       manualDebts.value = snapshot.manualDebts
       payments.value = snapshot.payments
@@ -71,6 +74,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           snapshot.incomingLoads.length ||
           snapshot.scaleEntries.length ||
           snapshot.scaleCashEntries.length ||
+          snapshot.cashInRecords.length ||
           snapshot.sales.length ||
           snapshot.manualDebts.length ||
           snapshot.payments.length ||
@@ -91,6 +95,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           scaleEntries: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-entries`) || '[]'),
           scaleSyncMeta: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-sync-meta`) || 'null'),
           scaleCashEntries: JSON.parse(window.localStorage.getItem(`${storagePrefix}scale-cash-entries`) || '[]'),
+          cashInRecords: JSON.parse(window.localStorage.getItem(`${storagePrefix}cash-in-records`) || '[]'),
           sales: JSON.parse(window.localStorage.getItem(`${storagePrefix}sales`) || '[]'),
           manualDebts: JSON.parse(window.localStorage.getItem(`${storagePrefix}manual-debts`) || '[]'),
           payments: JSON.parse(window.localStorage.getItem(`${storagePrefix}payments`) || '[]'),
@@ -174,6 +179,7 @@ export default defineNuxtPlugin((nuxtApp) => {
             scaleEntries,
             scaleSyncMeta,
             scaleCashEntries,
+            cashInRecords,
             sales,
             manualDebts,
             payments,
