@@ -113,6 +113,13 @@ const expenseForm = reactive<Omit<OperationalExpense, 'id'>>({
 })
 
 const infoMessage = ref('')
+type QuickPanel = 'load' | 'sale' | 'expense'
+const activeQuickPanel = ref<QuickPanel | null>(null)
+const quickPanelOptions: Array<{ key: QuickPanel; title: string; subtitle: string }> = [
+  { key: 'load', title: 'Tosh kirimi', subtitle: 'Howo yoki Kamaz tosh' },
+  { key: 'sale', title: 'Sotuv', subtitle: 'Klientga yuk chiqarish' },
+  { key: 'expense', title: 'Chiqim', subtitle: 'Harajat yoki to`lov' }
+]
 const quickSaleSuggestionsListId = 'quick-sale-client-suggestions'
 const supplierOptions = computed(() =>
   supplierContacts.value.map((contact) => ({
@@ -127,6 +134,10 @@ const showMessage = (message: string) => {
   setTimeout(() => {
     infoMessage.value = ''
   }, 2500)
+}
+
+const toggleQuickPanel = (panel: QuickPanel) => {
+  activeQuickPanel.value = activeQuickPanel.value === panel ? null : panel
 }
 
 const getNormalizedDailyOutputTons = (factory: FactoryName) => {
@@ -412,17 +423,17 @@ watch(
     </span>
   </section>
 
-  <section class="grid gap-4 xl:grid-cols-2">
+  <section class="grid gap-5">
     <article class="panel p-5">
       <header class="mb-4 flex items-center justify-between">
         <div>
-          <h3 class="text-base font-semibold text-slate-900">{{ t('1. Kunlik zavod hisobi') }}</h3>
-          <p class="text-xs text-slate-500">Masalan, zavod bugun 20 tonna mahsulot chiqardi. 1 tonna qoplik = 25 qop, rasipnoyda qop yo'q.</p>
+          <h3 class="text-base font-semibold text-slate-900">{{ t('Kunlik ishlab chiqarish') }}</h3>
+          <p class="text-xs text-slate-500">Oybek yoki Jamshid zavodiga faqat chiqqan tonnani yozing.</p>
         </div>
-        <span class="data-chip">Default tannarx ishlaydi</span>
+        <span class="data-chip">Ishchi: 40 som</span>
       </header>
 
-      <div class="grid gap-4">
+      <div class="grid gap-4 lg:grid-cols-2">
         <div
           v-for="factory in quickFactories"
           :key="factory"
@@ -466,29 +477,23 @@ watch(
             </div>
           </div>
 
-          <div class="mt-4 grid gap-3 md:grid-cols-5">
-            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-              <span class="text-slate-500">{{ dailyForms[factory].productType }} qoplik 1 kg</span>
-              <strong class="mt-1 block text-slate-900">{{ formatSom(getDailyBaggedCostPerTon(factory)) }}</strong>
-            </div>
-            <div :class="isDailyBulkAllowed(factory) ? 'rounded-2xl bg-sky-50 px-4 py-3 text-sm' : 'rounded-2xl bg-slate-100 px-4 py-3 text-sm'">
-              <span :class="isDailyBulkAllowed(factory) ? 'text-sky-700' : 'text-slate-500'">{{ dailyForms[factory].productType }} rasipnoy 1 kg</span>
-              <strong :class="isDailyBulkAllowed(factory) ? 'mt-1 block text-sky-700' : 'mt-1 block text-slate-500'">
-                {{ isDailyBulkAllowed(factory) ? formatSom(getDailyBulkCostPerTon(factory)) : 'Yo`q' }}
-              </strong>
-            </div>
-            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-              <span class="text-slate-500">Tosh sarfi</span>
-              <strong class="mt-1 block text-slate-900">{{ formatTons(getNormalizedDailyUsedStoneTons(factory)) }}</strong>
-            </div>
-            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-              <span class="text-slate-500">Qop soni</span>
-              <strong class="mt-1 block text-slate-900">{{ getDailyBagCount(factory) }} dona</strong>
-            </div>
-            <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-              <span class="text-slate-500">Jami preview tannarx</span>
-              <strong class="mt-1 block text-slate-900">{{ formatSom(getDailyPreviewCost(factory)) }}</strong>
-            </div>
+          <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+            <span class="text-slate-600">
+              Mahsulot:
+              <strong class="text-slate-900">{{ formatTons(getNormalizedDailyOutputTons(factory)) }}</strong>
+            </span>
+            <span class="text-slate-600">
+              Tosh:
+              <strong class="text-slate-900">{{ formatTons(getNormalizedDailyUsedStoneTons(factory)) }}</strong>
+            </span>
+            <span class="text-slate-600">
+              Qop:
+              <strong class="text-slate-900">{{ getDailyBagCount(factory) }} dona</strong>
+            </span>
+            <span class="text-slate-600">
+              Tannarx:
+              <strong class="text-slate-900">{{ formatSom(getDailyPreviewCost(factory)) }}</strong>
+            </span>
           </div>
 
           <div class="mt-4 flex justify-end">
@@ -500,9 +505,44 @@ watch(
       </div>
     </article>
 
-    <article class="panel p-5">
+    <article class="panel p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="text-base font-semibold text-slate-900">{{ t("Qo'shimcha kiritish") }}</h3>
+          <p class="text-xs text-slate-500">Kerakli bo'limni tanlang, forma pastda ochiladi.</p>
+        </div>
+        <button
+          v-if="activeQuickPanel"
+          type="button"
+          class="btn-secondary !px-3 !py-1.5 text-xs"
+          @click="activeQuickPanel = null"
+        >
+          {{ t('Yopish') }}
+        </button>
+      </div>
+
+      <div class="mt-4 grid gap-3 md:grid-cols-3">
+        <button
+          v-for="option in quickPanelOptions"
+          :key="option.key"
+          type="button"
+          :class="[
+            'rounded-xl border px-4 py-3 text-left transition',
+            activeQuickPanel === option.key
+              ? 'border-brand-300 bg-brand-50 text-brand-900 shadow-sm'
+              : 'border-slate-200 bg-white text-slate-700 hover:border-brand-200 hover:bg-brand-50/50'
+          ]"
+          @click="toggleQuickPanel(option.key)"
+        >
+          <span class="block text-sm font-semibold">{{ t(option.title) }}</span>
+          <span class="mt-1 block text-xs opacity-75">{{ t(option.subtitle) }}</span>
+        </button>
+      </div>
+    </article>
+
+    <article v-if="activeQuickPanel === 'load'" class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">{{ t('2. Tosh kirimi') }}</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t('Tosh kirimi') }}</h3>
         <p class="text-xs text-slate-500">Masalan, 1 Howo tosh keldi va jami narxi 2 000 000 bo'ldi</p>
       </header>
 
@@ -568,9 +608,9 @@ watch(
       </div>
     </article>
 
-    <article class="panel p-5">
+    <article v-if="activeQuickPanel === 'sale'" class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">{{ t('3. Sotuv kiritish') }}</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t('Sotuv kiritish') }}</h3>
         <p class="text-xs text-slate-500">Masalan, Begzod 20 tonna qum oldi</p>
       </header>
 
@@ -743,9 +783,9 @@ watch(
       </div>
     </article>
 
-    <article class="panel p-5">
+    <article v-if="activeQuickPanel === 'expense'" class="panel p-5">
       <header class="mb-4">
-        <h3 class="text-base font-semibold text-slate-900">{{ t('4. Chiqim kiritish') }}</h3>
+        <h3 class="text-base font-semibold text-slate-900">{{ t('Chiqim kiritish') }}</h3>
         <p class="text-xs text-slate-500">Svet, ishchi, bozorlik yoki boshqa chiqimlar</p>
       </header>
 
@@ -756,6 +796,7 @@ watch(
           label="Kategoriya"
           :options="expenseCategories.map((item) => ({ label: item, value: item }))"
         />
+        <AppSelect v-model="expenseForm.factory" label="Zavod" :options="factoryOptions" />
         <AppSelect
           v-model="expenseForm.paymentMethod"
           label="To'lov turi"
